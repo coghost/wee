@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"wee"
 	"wee/spider"
@@ -29,57 +30,57 @@ func main() {
 	xlog.InitLogDebug()
 	xpretty.InitializeWithColor()
 
-	bot := wee.NewBotWithDefault(
-		// wee.WithPopovers(blocket.Webpage.Popovers...),
+	selectors := blocket.Selectors
+
+	bot := wee.NewBotDefault(
+		wee.WithPopovers(selectors.Popovers...),
 		wee.WithPanicBy(wee.PanicByDump),
-		wee.WithHighlightTimes(0),
+		wee.WithHighlightTimes(1),
 	)
 
 	defer bot.Cleanup()
 	defer bot.QuitOnTimeout(-1)
 
 	bot.MustOpen(blocket.Home)
-	selectors := blocket.Selectors
 
 	bot.MustAcceptCookies(selectors.Popovers...)
 
-	// bot.MustClickElem(selectors.SortBy.Trigger)
-	// bot.MustClickElemAndWait(fmt.Sprintf(selectors.SortBy.Item, "0"))
+	// bot.MustClickElem(`div.all-categories span.more`, wee.WithClickByScript(true))
+	// bot.MustClickAndWait(`div.title a[href$="juridik/"] label`, wee.WithClickByScript(true))
+	bot.ClickWithScript(`div.title a[href$="juridik/"] label`)
 
-	bot.MustClickElem(`div.all-categories span.more`, wee.WithClickByScript(true))
-	wee.RandSleep(0.5, 0.6)
-	bot.MustClickElemAndWait(`div.title a[href$="juridik/"] label`)
-
-	val := bot.MustGetElemAttr(selectors.ResultsCount)
+	val := bot.MustElemAttr(selectors.ResultsCount)
 	pp.Println(val)
 
-	for i := 0; i < 20; i++ {
-		pageNum := bot.MustGetElemAttr(selectors.PageNum)
+	bot.MustClickOneByOne(selectors.SortBy.Trigger, fmt.Sprintf(selectors.SortBy.Item, "0"))
+
+	for i := 0; i < 0; i++ {
+		pageNum := bot.MustElemAttr(selectors.PageNum)
 		pp.Println("current page", pageNum)
 
-		results := bot.MustGetElemsOfAllSelectors(selectors.HasResults)
+		results := bot.MustElemsForAllSelectors(selectors.HasResults)
 		pp.Println("total jobs", len(results))
 
-		titles := bot.MustGetAllElemsAttrs(selectors.HasResults[0], wee.WithAttr("href"))
+		titles := bot.MustAllElemsAttrs(selectors.HasResults[0], wee.WithAttr("href"))
 		pp.Println(titles)
 
-		elems := bot.MustGetElemsOfAllSelectors(selectors.HasResults)
-		res := bot.GetAllElemsAttrMap(elems, wee.WithAttrMap(map[string]string{
+		elems := bot.MustElemsForAllSelectors(selectors.HasResults)
+		res := bot.AllElementsAttrMap(elems, wee.WithAttrMap(map[string]string{
 			"url":   "href",
 			"title": "",
 			"class": "class",
 		}))
 		pp.Println(res)
 
-		button, err := bot.GetElem(selectors.Paginate, wee.WithTimeout(wee.NapToSec))
+		button, err := bot.Elem(selectors.Paginate, wee.WithTimeout(wee.NapToSec))
 		if errors.Is(err, context.DeadlineExceeded) {
 			pp.Println("no more next page button found")
-			bot.ScrollToBottom()
+			bot.MustScrollToBottom()
 
 			break
 		}
 
-		bot.MustClickElementAndWait(button)
+		bot.MustClickElemAndWait(button)
 	}
 
 	url := bot.CurrentUrl()

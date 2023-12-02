@@ -28,10 +28,10 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 	bindBrowserOptions(&opt, opts...)
 
 	lauch := launcher.New()
-	setLauncher(lauch, false)
+	setLauncher(lauch, opt.headless)
 
 	if opt.paintRects {
-		lauch.Set("--show-paint-rects")
+		lauch.Set(PaintRects)
 	}
 
 	if len(opt.flags) != 0 {
@@ -47,6 +47,7 @@ func setLauncher(client *launcher.Launcher, headless bool) {
 	client.
 		Set("no-first-run").
 		Set("no-startup-window").
+		Set("disable-blink-features", "AutomationControlled").
 		Set("disable-gpu").
 		Set("disable-dev-shm-usage").
 		Set("disable-web-security").
@@ -60,6 +61,7 @@ func setLauncher(client *launcher.Launcher, headless bool) {
 type BrowserOptions struct {
 	slowDelay  int
 	paintRects bool
+	headless   bool
 	flags      []string
 }
 
@@ -87,5 +89,11 @@ func WithFlags(arr ...string) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.flags = append(o.flags, arr...)
 		o.flags = lo.Uniq(o.flags)
+	}
+}
+
+func WithBrowserHeadless(b bool) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.headless = b
 	}
 }

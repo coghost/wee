@@ -8,7 +8,6 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/gookit/goutil/dump"
 	"github.com/rs/zerolog/log"
-	"github.com/samber/lo"
 )
 
 // Init init all attributes not exposed with options
@@ -22,6 +21,10 @@ func (b *Bot) Cleanup() {
 	b.launcher.Cleanup()
 }
 
+func (b *Bot) Blocked() {
+	b.QuitOnTimeout(-1)
+}
+
 func (b *Bot) QuitOnTimeout(args ...int) {
 	dft := 3
 
@@ -31,7 +34,7 @@ func (b *Bot) QuitOnTimeout(args ...int) {
 	}
 
 	if sec < 0 {
-		Pause()
+		QuitIfY()
 		return
 	}
 
@@ -58,16 +61,16 @@ func (b *Bot) SetPanicWith(panicWith PanicByType) {
 	b.panicBy = panicWith
 }
 
-func (b *Bot) e(err error) {
+func (b *Bot) pie(err error) {
 	if err == nil {
 		return
 	}
 
-	xpretty.DumpCallerStack()
-
 	switch b.panicBy {
 	case PanicByDump:
 		dump.P(err)
+		xpretty.DumpCallerStack()
+		QuitIfY()
 	case PanicByLogError:
 		log.Error().Err(err).Msg("error of bot")
 	case PanicByLogFatal:
@@ -84,6 +87,12 @@ func (b *Bot) MustOpen(url string) {
 
 	// when page is loaded, set timeout to medium timeout
 	b.page.Timeout(b.mediumToSec)
+
+	if b.cookieFile != "" || b.withCookies {
+		b.LoadCookies(b.cookieFile)
+	}
+
+	b.page.Reload()
 }
 
 func (b *Bot) Open(url string) error {
@@ -100,11 +109,6 @@ func (b *Bot) Page() *rod.Page {
 
 func (b *Bot) CurrentUrl() string {
 	return b.page.MustInfo().URL
-}
-
-func (b *Bot) BindPopovers(arr ...string) {
-	b.popovers = append(b.popovers, arr...)
-	b.popovers = lo.Uniq(b.popovers)
 }
 
 // MustEval  a wrapper with MediumTo to rod.Page.MustEval
@@ -132,4 +136,12 @@ func (b *Bot) EnsureUrlHas(str string, timeouts ...float64) error {
 	})
 
 	return err
+}
+
+func (b *Bot) PageSource() string {
+	return b.page.MustHTML()
+}
+
+func (b *Bot) MustStable() {
+	b.page.MustWaitStable()
 }

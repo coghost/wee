@@ -9,17 +9,6 @@ type ScrollAsHuman struct {
 	scrollUpChance   float64
 }
 
-type Box struct {
-	X      float64 `json:"x"`
-	Y      float64 `json:"y"`
-	Width  float64 `json:"width"`
-	Height float64 `json:"height"`
-	Top    float64 `json:"top"`
-	Right  float64 `json:"right"`
-	Bottom float64 `json:"bottom"`
-	Left   float64 `json:"left"`
-}
-
 type ElemOptions struct {
 	root   *rod.Element
 	iframe *rod.Page

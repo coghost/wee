@@ -1,13 +1,12 @@
 package wee
 
 import (
-	"encoding/json"
 	"math"
 	"math/rand"
 	"time"
 
 	"github.com/go-rod/rod"
-	"github.com/rs/zerolog/log"
+	"github.com/go-rod/rod/lib/proto"
 )
 
 func (b *Bot) ScrollToElement(elem *rod.Element, opts ...ElemOptionFunc) {
@@ -18,14 +17,18 @@ func (b *Bot) scrollToElement(elem *rod.Element, opts ...ElemOptionFunc) {
 	opt := ElemOptions{offsetToTop: 0.25, steps: ShortScrollStep}
 	bindElemOptions(&opt, opts...)
 
-	box, err := b.GetElemBox(elem)
+	shape, err := elem.Shape()
 	if err != nil {
-		elem.Focus()
+		return
+	}
+
+	box := shape.Box()
+	if box == nil {
 		return
 	}
 
 	h := b.GetWindowInnerHeight()
-	scrollDistance := box.Top - h*opt.offsetToTop
+	scrollDistance := box.Y - h*opt.offsetToTop
 
 	b.page.Mouse.Scroll(0.0, scrollDistance, opt.steps)
 }
@@ -36,7 +39,7 @@ func (b *Bot) ScrollToElemDirectly(elem *rod.Element) error {
 		return err
 	}
 
-	return b.page.Mouse.Scroll(0.0, box.Top, 1)
+	return b.page.Mouse.Scroll(0.0, box.Y, 1)
 }
 
 func (b *Bot) MustScrollToXY(x, y float64) {
@@ -45,13 +48,15 @@ func (b *Bot) MustScrollToXY(x, y float64) {
 
 func (b *Bot) MustScrollToTop() {
 	h := b.GetScrollHeight()
-	e := b.page.Mouse.Scroll(0, -h, MediumScrollStep)
-	b.e(e)
+	// e := b.page.Mouse.Scroll(0, -h, MediumScrollStep)
+	e := b.ScrollLikeHuman(0, -h)
+	b.pie(e)
 }
 
-func (b *Bot) ScrollToBottom(opts ...ElemOptionFunc) error {
+func (b *Bot) MustScrollToBottom(opts ...ElemOptionFunc) {
 	h := b.GetScrollHeight()
-	return b.ScrollLikeHuman(0, h, opts...)
+	e := b.ScrollLikeHuman(0, h, opts...)
+	b.pie(e)
 }
 
 func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) error {
@@ -138,6 +143,7 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 
 func (b *Bot) GetWindowInnerHeight() float64 {
 	h := b.page.Timeout(b.shortToSec).MustEval(`() => window.innerHeight`).Int()
+	// h := b.page.MustGetWindow().Height
 	return float64(h)
 }
 
@@ -146,16 +152,11 @@ func (b *Bot) GetScrollHeight() float64 {
 	return float64(h)
 }
 
-func (b *Bot) GetElemBox(elem *rod.Element) (Box, error) {
-	var box Box
+func (b *Bot) GetElemBox(elem *rod.Element) (*proto.DOMRect, error) {
+	shape, err := elem.Shape()
+	if err != nil {
+		return nil, err
+	}
 
-	rect := "() => JSON.stringify(this.getBoundingClientRect())"
-
-	err := rod.Try(func() {
-		dat := elem.Timeout(b.shortToSec).MustEval(rect).String()
-		log.Trace().Msg(dat)
-		json.Unmarshal([]byte(dat), &box)
-	})
-
-	return box, err
+	return shape.Box(), nil
 }

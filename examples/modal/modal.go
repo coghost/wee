@@ -10,12 +10,12 @@ const (
 )
 
 func main() {
-	bot := wee.NewBotWithDefault()
+	bot := wee.NewBotDefault()
 
 	defer bot.Cleanup()
 	defer bot.QuitOnTimeout(2)
 
 	bot.MustOpen(home)
-	elem, _ := bot.GetElem(button)
-	bot.ClickElement(elem)
+	elem, _ := bot.Elem(button)
+	bot.ClickElem(elem)
 }

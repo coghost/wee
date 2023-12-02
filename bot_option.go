@@ -14,6 +14,11 @@ type Bot struct {
 	browser  *rod.Browser
 	page     *rod.Page
 
+	headless    bool
+	withCookies bool
+
+	cookieFile string
+
 	root *rod.Element
 
 	// browserOnly is used when we init browser only.
@@ -40,6 +45,12 @@ func NewBot(options ...BotOption) *Bot {
 
 	bindBotOptions(bot, options...)
 
+	if bot.headless {
+		l, brw := NewBrowser(WithBrowserHeadless(bot.headless))
+		bot.launcher = l
+		bot.browser = brw
+	}
+
 	if !bot.browserOnly {
 		bot.CustomizePage()
 	}
@@ -47,19 +58,21 @@ func NewBot(options ...BotOption) *Bot {
 	return bot
 }
 
-func NewBotWithDefault(options ...BotOption) *Bot {
+func NewBotDefault(options ...BotOption) *Bot {
 	l, brw := NewBrowser()
 	options = append(options, WithLauncher(l), WithBrowser(brw))
 
 	return NewBot(options...)
 }
 
-func NewBotWithDebug(options ...BotOption) *Bot {
+func NewBotDebug(options ...BotOption) *Bot {
 	l, brw := NewBrowser(WithPaintRects(true))
 	options = append(options, WithLauncher(l), WithBrowser(brw))
 
 	return NewBot(options...)
 }
+
+/** bot init options **/
 
 type BotOption func(*Bot)
 
@@ -99,15 +112,34 @@ func WithBrowserOnly(b bool) BotOption {
 	}
 }
 
+func WithCookies(b bool) BotOption {
+	return func(o *Bot) {
+		o.withCookies = b
+	}
+}
+
+func WithCookieFile(s string) BotOption {
+	return func(o *Bot) {
+		o.cookieFile = s
+	}
+}
+
+func Headless(b bool) BotOption {
+	return func(o *Bot) {
+		o.headless = b
+	}
+}
+
 func WithPanicBy(i PanicByType) BotOption {
 	return func(o *Bot) {
 		o.panicBy = i
 	}
 }
 
-func WithPopovers(arr ...string) BotOption {
+// WithPopovers is useful when popovers appear randomly.
+func WithPopovers(popovers ...string) BotOption {
 	return func(o *Bot) {
-		o.popovers = append(o.popovers, arr...)
+		o.popovers = append(o.popovers, popovers...)
 		o.popovers = lo.Uniq(o.popovers)
 	}
 }

@@ -9,7 +9,7 @@ import (
 
 func (b *Bot) MustInput(sel, text string, opts ...ElemOptionFunc) string {
 	txt, err := b.Input(sel, text, opts...)
-	b.e(err)
+	b.pie(err)
 
 	return txt
 }
@@ -19,13 +19,13 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 	opt := ElemOptions{submit: false}
 	bindElemOptions(&opt, opts...)
 
-	elem, err := b.GetElem(sel, opts...)
+	elem, err := b.Elem(sel, opts...)
 	if err != nil {
 		return "", err
 	}
 
 	if elem == nil {
-		return "", ErrCannotFindElem(sel + "@@@" + text)
+		return "", ErrCannotFindSelector(sel + "@@@" + text)
 	}
 
 	// elem = elem.Timeout(time.Second * b.ShortTo).MustSelectAllText().MustInput(text)
@@ -62,7 +62,7 @@ func (b *Bot) typeAsHuman(elem *rod.Element, text string, humanized bool) {
 
 	for _, str := range arr {
 		err := elem.Input(str)
-		b.e(err)
+		b.pie(err)
 	}
 
 	RandSleep(wait-0.01, wait+0.01)

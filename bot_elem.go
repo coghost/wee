@@ -11,19 +11,19 @@ import (
 )
 
 const (
-	_logIfTimeout = 5.0
+	_logIfTimeout = 2.0
 	_iframeLen    = 2
 )
 
-func (b *Bot) MustGetElem(selector string, opts ...ElemOptionFunc) *rod.Element {
-	elem, err := b.GetElem(selector, opts...)
-	b.e(err)
+func (b *Bot) MustElem(selector string, opts ...ElemOptionFunc) *rod.Element {
+	elem, err := b.Elem(selector, opts...)
+	b.pie(err)
 
 	return elem
 }
 
-// GetElem get element by selector.
-func (b *Bot) GetElem(selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
+// Elem get element by selector.
+func (b *Bot) Elem(selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
 	start := time.Now()
 
 	elem, err := b.getElem(selector, opts...)
@@ -38,9 +38,9 @@ func (b *Bot) GetElem(selector string, opts ...ElemOptionFunc) (*rod.Element, er
 	return elem, nil
 }
 
-// GetElemInstantly get elem without wait.
-func (b *Bot) GetElemInstantly(selector string, index int) (*rod.Element, error) {
-	elems, err := b.GetElems(selector)
+// ElemByIndex get elem without wait.
+func (b *Bot) ElemByIndex(selector string, index int) (*rod.Element, error) {
+	elems, err := b.Elems(selector)
 	if err != nil {
 		return nil, err
 	}
@@ -53,12 +53,12 @@ func (b *Bot) GetElemInstantly(selector string, index int) (*rod.Element, error)
 	return elems[index], nil
 }
 
-// GetElemByText by text content.
+// ElemByText by text content.
 //
 // Available layouts:
 //   - when selector is like `div.abc@@@txt`, will use contains
 //   - when selector is like `div.abc@@@---@@@txt`, will use exact match
-func (b *Bot) GetElemByText(selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
+func (b *Bot) ElemByText(selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
 	opt := ElemOptions{root: b.root}
 	bindElemOptions(&opt, opts...)
 
@@ -92,29 +92,29 @@ func (b *Bot) GetElemByText(selector string, opts ...ElemOptionFunc) (*rod.Eleme
 	return elem, err
 }
 
-func (b *Bot) MustGetElemsOfAllSelectors(selectors []string, opts ...ElemOptionFunc) []*rod.Element {
+func (b *Bot) MustElemsForAllSelectors(selectors []string, opts ...ElemOptionFunc) []*rod.Element {
 	var elems []*rod.Element
 	for _, s := range selectors {
-		elems = append(elems, b.MustGetElems(s)...)
+		elems = append(elems, b.MustElems(s)...)
 	}
 
 	return elems
 }
 
-func (b *Bot) MustGetElems(selector string, opts ...ElemOptionFunc) []*rod.Element {
-	elems, err := b.GetElems(selector, opts...)
-	b.e(err)
+func (b *Bot) MustElems(selector string, opts ...ElemOptionFunc) []*rod.Element {
+	elems, err := b.Elems(selector, opts...)
+	b.pie(err)
 
 	return elems
 }
 
-// GetElems get all elements immediately.
-func (b *Bot) GetElems(selector string, opts ...ElemOptionFunc) ([]*rod.Element, error) {
+// Elems get all elements immediately.
+func (b *Bot) Elems(selector string, opts ...ElemOptionFunc) ([]*rod.Element, error) {
 	b.mustNotEmpty(selector)
 	b.mustNotByText(selector)
 
 	if ss := strings.Split(selector, IFrameSep); len(ss) == _iframeLen {
-		elem, err := b.GetIframeElem(ss[0], ss[1])
+		elem, err := b.IframeElem(ss[0], ss[1])
 		if err != nil {
 			return nil, err
 		}
@@ -128,7 +128,7 @@ func (b *Bot) GetElems(selector string, opts ...ElemOptionFunc) ([]*rod.Element,
 	if opt.timeout != 0 {
 		// WARN: when timeout not 0, we need to ensure elem existed first,
 		// so run GetElem to ensure elem existed or end if err.
-		_, err := b.GetElem(selector, opts...)
+		_, err := b.Elem(selector, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -142,17 +142,10 @@ func (b *Bot) GetElems(selector string, opts ...ElemOptionFunc) ([]*rod.Element,
 	return elems, nil
 }
 
-// GetElemsWithShortTo set the timeout to `5 seconds`
-func (b *Bot) GetElemsWithShortTo(selector string, opts ...ElemOptionFunc) ([]*rod.Element, error) {
-	opts = append(opts, WithTimeout(ShortToSec))
-
-	return b.GetElems(selector, opts...)
-}
-
-func (b *Bot) MustGetAllElemsAttrs(selector string, opts ...ElemOptionFunc) []string {
+func (b *Bot) MustAllElemsAttrs(selector string, opts ...ElemOptionFunc) []string {
 	attrs := []string{}
 
-	elems := b.MustGetElems(selector, opts...)
+	elems := b.MustElems(selector, opts...)
 	for _, elem := range elems {
 		v, err := b.getElementAttr(elem, opts...)
 		if err != nil {
@@ -165,15 +158,15 @@ func (b *Bot) MustGetAllElemsAttrs(selector string, opts ...ElemOptionFunc) []st
 	return attrs
 }
 
-func (b *Bot) MustGetElemAttr(selector string, opts ...ElemOptionFunc) string {
-	v, err := b.GetElemAttr(selector, opts...)
-	b.e(err)
+func (b *Bot) MustElemAttr(selector string, opts ...ElemOptionFunc) string {
+	v, err := b.ElemAttr(selector, opts...)
+	b.pie(err)
 
 	return v
 }
 
-func (b *Bot) GetElemAttr(selector string, opts ...ElemOptionFunc) (string, error) {
-	elem, err := b.GetElem(selector, opts...)
+func (b *Bot) ElemAttr(selector string, opts ...ElemOptionFunc) (string, error) {
+	elem, err := b.Elem(selector, opts...)
 	if err != nil {
 		return "", err
 	}
@@ -181,28 +174,28 @@ func (b *Bot) GetElemAttr(selector string, opts ...ElemOptionFunc) (string, erro
 	return b.getElementAttr(elem, opts...)
 }
 
-func (b *Bot) GetElementAttr(elem *rod.Element, opts ...ElemOptionFunc) (string, error) {
+func (b *Bot) ElementAttr(elem *rod.Element, opts ...ElemOptionFunc) (string, error) {
 	return b.getElementAttr(elem, opts...)
 }
 
 func (b *Bot) getElem(selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
 	b.mustNotEmpty(selector)
 
-	opt := ElemOptions{root: b.root, timeout: MediumToSec}
+	opt := ElemOptions{root: b.root, timeout: ShortToSec}
 	bindElemOptions(&opt, opts...)
 
 	if ss := strings.Split(selector, IFrameSep); len(ss) == _iframeLen {
-		return b.GetIframeElem(ss[0], ss[1], opts...)
+		return b.IframeElem(ss[0], ss[1], opts...)
 	}
 
 	// by text content
 	if strings.Contains(selector, SEP) {
-		return b.GetElemByText(selector, opts...)
+		return b.ElemByText(selector, opts...)
 	}
 
 	// without wait
 	if opt.timeout == 0 {
-		return b.GetElemInstantly(selector, opt.index)
+		return b.ElemByIndex(selector, opt.index)
 	}
 
 	var (
@@ -230,7 +223,7 @@ func (b *Bot) getElem(selector string, opts ...ElemOptionFunc) (*rod.Element, er
 	// when index is not 0:
 	// this is used when we first need to wait elem to appear, then get the one with index
 	if opt.index != 0 {
-		elem, err = b.GetElemInstantly(selector, opt.index)
+		elem, err = b.ElemByIndex(selector, opt.index)
 	}
 
 	return elem, err
@@ -254,16 +247,16 @@ func (b *Bot) getElementAttr(elem *rod.Element, opts ...ElemOptionFunc) (string,
 	return *s, nil
 }
 
-func (b *Bot) GetAllElemsAttrMap(elems []*rod.Element, opts ...ElemOptionFunc) []map[string]string {
+func (b *Bot) AllElementsAttrMap(elems []*rod.Element, opts ...ElemOptionFunc) []map[string]string {
 	var output []map[string]string
 	for _, elem := range elems {
-		output = append(output, b.GetElementAttrMap(elem, opts...))
+		output = append(output, b.ElementAttrMap(elem, opts...))
 	}
 
 	return output
 }
 
-func (b *Bot) GetElementAttrMap(elem *rod.Element, opts ...ElemOptionFunc) map[string]string {
+func (b *Bot) ElementAttrMap(elem *rod.Element, opts ...ElemOptionFunc) map[string]string {
 	opt := ElemOptions{}
 	bindElemOptions(&opt, opts...)
 
@@ -297,10 +290,10 @@ func (b *Bot) mustNotByText(selector string) {
 	}
 }
 
-func (b *Bot) MustEnsureAnyElem(selectors ...string) string {
+func (b *Bot) MustAnyElem(selectors ...string) string {
 	start := time.Now()
-	s, err := b.EnsureAnyElem(selectors...)
-	b.e(err)
+	s, err := b.AnyElem(selectors...)
+	b.pie(err)
 
 	cost := time.Since(start).Seconds()
 	if cost > _logIfTimeout {
@@ -310,11 +303,11 @@ func (b *Bot) MustEnsureAnyElem(selectors ...string) string {
 	return s
 }
 
-func (b *Bot) EnsureAnyElem(selectors ...string) (string, error) {
-	return b.EnsureAnyElemWithTimeout(selectors)
+func (b *Bot) AnyElem(selectors ...string) (string, error) {
+	return b.AnyElemWithTimeout(selectors)
 }
 
-func (b *Bot) EnsureAnyElemWithTimeout(selectors []string, opts ...ElemOptionFunc) (string, error) {
+func (b *Bot) AnyElemWithTimeout(selectors []string, opts ...ElemOptionFunc) (string, error) {
 	opt := ElemOptions{timeout: MediumToSec}
 	bindElemOptions(&opt, opts...)
 
@@ -351,20 +344,20 @@ func (b *Bot) appendToRace(selector string, out *string, race *rod.RaceContext) 
 	}
 }
 
-func (b *Bot) MustGetIframeElem(iframe, selector string, opts ...ElemOptionFunc) *rod.Element {
-	elem, err := b.GetIframeElem(iframe, selector, opts...)
-	b.e(err)
+func (b *Bot) MustIframeElem(iframe, selector string, opts ...ElemOptionFunc) *rod.Element {
+	elem, err := b.IframeElem(iframe, selector, opts...)
+	b.pie(err)
 
 	return elem
 }
 
-func (b *Bot) GetIframeElem(iframe, selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
-	iframeElem, err := b.GetElem(iframe, opts...)
+func (b *Bot) IframeElem(iframe, selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
+	iframeElem, err := b.Elem(iframe, opts...)
 	if err != nil {
 		return nil, err
 	}
 
 	opts = append(opts, WithIframe(iframeElem.MustFrame()))
 
-	return b.GetElem(selector, opts...)
+	return b.Elem(selector, opts...)
 }

@@ -11,50 +11,50 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (b *Bot) MustClickElemAndWait(selector string, opts ...ElemOptionFunc) {
-	b.MustClickElem(selector, opts...)
+func (b *Bot) MustClickAndWait(selector string, opts ...ElemOptionFunc) {
+	b.MustClick(selector, opts...)
 	b.page.MustWaitStable()
 }
 
-func (b *Bot) MustClickElem(selector string, opts ...ElemOptionFunc) {
-	b.e(b.ClickElem(selector, opts...))
+func (b *Bot) MustClick(selector string, opts ...ElemOptionFunc) {
+	b.pie(b.Click(selector, opts...))
 }
 
-func (b *Bot) ClickElem(selector string, opts ...ElemOptionFunc) error {
-	elem, err := b.GetElem(selector, opts...)
+func (b *Bot) Click(selector string, opts ...ElemOptionFunc) error {
+	elem, err := b.Elem(selector, opts...)
 	if err != nil {
 		return err
 	}
 
 	if elem == nil {
-		return ErrCannotFindElem(selector)
+		return ErrCannotFindSelector(selector)
 	}
 
-	return b.ClickElement(elem)
+	return b.ClickElem(elem)
 }
 
-func (b *Bot) MustClickElementAndWait(elem *rod.Element, opts ...ElemOptionFunc) {
-	b.MustClickElement(elem, opts...)
+func (b *Bot) MustClickElemAndWait(elem *rod.Element, opts ...ElemOptionFunc) {
+	b.MustClickElem(elem, opts...)
 	b.page.MustWaitStable()
 }
 
-func (b *Bot) MustClickElement(elem *rod.Element, opts ...ElemOptionFunc) {
-	b.e(b.ClickElement(elem, opts...))
+func (b *Bot) MustClickElem(elem *rod.Element, opts ...ElemOptionFunc) {
+	b.pie(b.ClickElem(elem, opts...))
 }
 
-func (b *Bot) ClickElement(elem *rod.Element, opts ...ElemOptionFunc) error {
+func (b *Bot) ClickElem(elem *rod.Element, opts ...ElemOptionFunc) error {
 	opt := ElemOptions{handleCoverByEsc: true, highlight: true}
 	bindElemOptions(&opt, opts...)
 
 	if opt.clickByScript {
-		return b.ClickWithScript(elem, opts...)
+		return b.ClickElemWithScript(elem, opts...)
 	}
 
 	if opt.highlight {
 		b.FocusAndHighlight(elem)
 	}
 
-	err := b.ensureClickable(elem, opt.handleCoverByEsc)
+	err := b.EnsureInteractable(elem, opt.handleCoverByEsc)
 	if err != nil {
 		return err
 	}
@@ -65,31 +65,31 @@ func (b *Bot) ClickElement(elem *rod.Element, opts ...ElemOptionFunc) error {
 	}
 
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, &rod.ErrInvisibleShape{}) {
-		return b.ClickWithScript(elem, opts...)
+		return b.ClickElemWithScript(elem, opts...)
 	}
 
 	return err
 }
 
-func (b *Bot) ensureClickable(elem *rod.Element, handle bool) error {
-	err := b.IsInteractable(elem)
+func (b *Bot) EnsureInteractable(elem *rod.Element, byEsc bool) error {
+	err := b.Interactable(elem)
 	if err == nil {
 		return nil
 	}
 
-	if hit := b.CloseIfHasPopovers(); hit != 0 {
+	if hit := b.CloseIfHasPopovers(b.popovers...); hit != 0 {
 		log.Trace().Int("hit", hit).Msg("closed pop")
 		return nil
 	}
 
-	if errors.Is(err, &rod.ErrCovered{}) && handle {
+	if errors.Is(err, &rod.ErrCovered{}) && byEsc {
 		return b.PressEscape(elem)
 	}
 
 	return err
 }
 
-func (b *Bot) IsInteractable(elem *rod.Element) error {
+func (b *Bot) Interactable(elem *rod.Element) error {
 	if _, err := elem.Interactable(); err != nil {
 		e := elem.ScrollIntoView()
 		if e == nil {
@@ -103,23 +103,36 @@ func (b *Bot) IsInteractable(elem *rod.Element) error {
 }
 
 func (b *Bot) MustPressEscape(elem *rod.Element) {
-	err := b.PressEscape(elem)
-	b.e(err)
+	b.pie(b.PressEscape(elem))
 }
 
 func (b *Bot) PressEscape(elem *rod.Element) error {
-	return elem.Timeout(b.shortToSec).MustKeyActions().Press(input.Escape).Do()
+	return b.Press(elem, input.Escape)
 }
 
-func (b *Bot) ClickWithScript(elem *rod.Element, opts ...ElemOptionFunc) error {
-	opt := ElemOptions{timeout: ShortToSec, highlight: true}
+func (b *Bot) Press(elem *rod.Element, keys ...input.Key) error {
+	return elem.Timeout(b.shortToSec).MustKeyActions().Press(keys...).Do()
+}
+
+func (b *Bot) ClickWithScript(selector string, opts ...ElemOptionFunc) error {
+	elem, err := b.Elem(selector, opts...)
+	if err != nil {
+		return err
+	}
+
+	return b.ClickElemWithScript(elem, opts...)
+}
+
+func (b *Bot) ClickElemWithScript(elem *rod.Element, opts ...ElemOptionFunc) error {
+	log.Debug().Msg("start click elem with script")
+	opt := ElemOptions{timeout: MediumToSec, highlight: true}
 	bindElemOptions(&opt, opts...)
 
 	if opt.highlight {
 		b.FocusAndHighlight(elem)
 	}
 
-	_, err := elem.Timeout(time.Duration(opt.timeout)*time.Second).Eval(`(elem) => { this.click() }`, elem)
+	_, err := elem.CancelTimeout().Timeout(time.Duration(opt.timeout)*time.Second).Eval(`(elem) => { this.click() }`, elem)
 	if err != nil {
 		log.Error().Err(err).Msg("Err: close by Eval script this.click()")
 		return err
@@ -137,18 +150,20 @@ func (b *Bot) ClickWithScript(elem *rod.Element, opts ...ElemOptionFunc) error {
 
 func (b *Bot) MustAcceptCookies(cookies ...string) {
 	for _, sel := range cookies {
-		b.MustClickElem(sel)
+		b.MustClick(sel)
 	}
+
+	b.MustStable()
 }
 
-func (b *Bot) CloseIfHasPopovers() int {
+func (b *Bot) CloseIfHasPopovers(popovers ...string) int {
 	hit := 0
 
-	if len(b.popovers) == 0 {
+	if len(popovers) == 0 {
 		return 0
 	}
 
-	for _, pop := range b.popovers {
+	for _, pop := range popovers {
 		n, err := b.ClosePopover(pop)
 		if err == nil {
 			hit += n
@@ -167,7 +182,7 @@ func (b *Bot) CloseIfHasPopovers() int {
 func (b *Bot) ClosePopover(sel string) (int, error) {
 	hit := 0
 
-	elems, err := b.GetElems(sel)
+	elems, err := b.Elems(sel)
 	if err != nil {
 		return 0, err
 	}
@@ -184,7 +199,7 @@ func (b *Bot) ClosePopover(sel string) (int, error) {
 			return 0, err
 		}
 
-		b.Highlight(elem)
+		b.HighlightElem(elem)
 
 		e := elem.Click(proto.InputMouseButtonLeft, 1)
 		if e != nil {
@@ -195,4 +210,13 @@ func (b *Bot) ClosePopover(sel string) (int, error) {
 	}
 
 	return hit, nil
+}
+
+func (b *Bot) MustClickOneByOne(selectors ...string) {
+	for _, sel := range selectors {
+		b.MustClick(sel)
+		RandSleep(0.5, 0.6)
+	}
+
+	b.MustStable()
 }

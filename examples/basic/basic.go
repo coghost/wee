@@ -12,7 +12,7 @@ func main() {
 	xlog.InitLogDebug()
 	xpretty.InitializeWithColor()
 
-	bot := wee.NewBotWithDefault()
+	bot := wee.NewBotDefault()
 
 	defer bot.Cleanup()
 	// defer bot.QuitOnTimeout(-1)
@@ -27,14 +27,14 @@ func main() {
 
 	bot.MustInput(input, "python", wee.WithSubmit(true))
 
-	sel := bot.MustEnsureAnyElem(results, noResults)
+	sel := bot.MustAnyElem(results, noResults)
 
 	if sel == noResults {
 		log.Warn().Msg("no results found")
 		return
 	}
 
-	elems, err := bot.GetElems(results)
+	elems, err := bot.Elems(results)
 	if err != nil {
 		log.Error().Err(err).Msg("cannot get results")
 	}
