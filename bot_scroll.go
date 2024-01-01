@@ -75,7 +75,7 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 	steps := MediumScrollStep
 
 	if !opt.scrollAsHuman.enabled || steps == 0 {
-		err := page.Mouse.Scroll(offsetX, offsetY, 1)
+		err := page.Mouse.Scroll(offsetX, offsetY, steps)
 
 		RandSleep(0.1, 0.2)
 		return err

@@ -6,22 +6,22 @@ import (
 	"fmt"
 
 	"wee"
-	"wee/spider"
+	"wee/schemer"
 
 	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
 	"github.com/k0kubun/pp/v3"
 )
 
-var blocket = spider.Spider{
-	Uid:  "blocket.se",
-	Home: "https://jobb.blocket.se/",
-	Selectors: &spider.Selectors{
+var blocket = schemer.Scheme{
+	Uid: "blocket.se",
+	Mapper: &schemer.Mapper{
+		Home:         "https://jobb.blocket.se/",
 		Popovers:     []string{`iframe[id^="sp_message_iframe"]$$$button[class~=sp_choice_type_11]`},
-		SortBy:       spider.NewDropdown(`div#sort-filter`, `div[data-value="sp=%s"]`),
+		SortBy:       schemer.NewDropdown(`div#sort-filter`, `div[data-value="sp=%s"]`),
 		HasResults:   []string{`div.job-item a.header`},
 		ResultsCount: `span[id="total-count"]`,
-		Paginate:     `div.pagination a>i.right`,
+		NextPage:     `div.pagination a>i.right`,
 		PageNum:      `button.blue`,
 	},
 }
@@ -30,7 +30,7 @@ func main() {
 	xlog.InitLogDebug()
 	xpretty.InitializeWithColor()
 
-	selectors := blocket.Selectors
+	selectors := blocket.Mapper
 
 	bot := wee.NewBotDefault(
 		wee.WithPopovers(selectors.Popovers...),
@@ -39,9 +39,9 @@ func main() {
 	)
 
 	defer bot.Cleanup()
-	defer bot.QuitOnTimeout(-1)
+	defer wee.Blocked()
 
-	bot.MustOpen(blocket.Home)
+	bot.MustOpen(blocket.Mapper.Home)
 
 	bot.MustAcceptCookies(selectors.Popovers...)
 
@@ -72,7 +72,7 @@ func main() {
 		}))
 		pp.Println(res)
 
-		button, err := bot.Elem(selectors.Paginate, wee.WithTimeout(wee.NapToSec))
+		button, err := bot.Elem(selectors.NextPage, wee.WithTimeout(wee.NapToSec))
 		if errors.Is(err, context.DeadlineExceeded) {
 			pp.Println("no more next page button found")
 			bot.MustScrollToBottom()

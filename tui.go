@@ -10,6 +10,26 @@ import (
 	"github.com/pterm/pterm"
 )
 
+func Blocked() {
+	QuitOnTimeout(-1)
+}
+
+func QuitOnTimeout(args ...int) {
+	dft := 3
+
+	sec := FirstOrDefault(dft, args...)
+	if sec == 0 {
+		return
+	}
+
+	if sec < 0 {
+		QuitIfY()
+		return
+	}
+
+	SleepWithSpin(sec)
+}
+
 func SleepWithSpin(n int, args ...string) {
 	msg := fmt.Sprintf("Wait for %d seconds before quitting ...", n)
 	if len(args) > 0 {

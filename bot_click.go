@@ -16,6 +16,12 @@ func (b *Bot) MustClickAndWait(selector string, opts ...ElemOptionFunc) {
 	b.page.MustWaitStable()
 }
 
+func (b *Bot) MustClickAll(selectors []string, opts ...ElemOptionFunc) {
+	for _, ss := range selectors {
+		b.MustClick(ss, opts...)
+	}
+}
+
 func (b *Bot) MustClick(selector string, opts ...ElemOptionFunc) {
 	b.pie(b.Click(selector, opts...))
 }
@@ -149,11 +155,15 @@ func (b *Bot) ClickElemWithScript(elem *rod.Element, opts ...ElemOptionFunc) err
 }
 
 func (b *Bot) MustAcceptCookies(cookies ...string) {
+	if len(cookies) == 0 {
+		return
+	}
+
 	for _, sel := range cookies {
 		b.MustClick(sel)
 	}
 
-	b.MustStable()
+	b.MustWaitLoad()
 }
 
 func (b *Bot) CloseIfHasPopovers(popovers ...string) int {

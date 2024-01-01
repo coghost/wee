@@ -12,7 +12,7 @@ func main() {
 	xlog.InitLogDebug()
 	xpretty.InitializeWithColor()
 
-	bot := wee.NewBotDefault()
+	bot := wee.NewBotUserMode()
 
 	defer bot.Cleanup()
 

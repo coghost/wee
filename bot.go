@@ -17,28 +17,13 @@ func (b *Bot) Init() {
 }
 
 func (b *Bot) Cleanup() {
+	if b.userMode {
+		log.Debug().Msg("in user mode, no clean up")
+		return
+	}
+
 	b.browser.MustClose()
 	b.launcher.Cleanup()
-}
-
-func (b *Bot) Blocked() {
-	b.QuitOnTimeout(-1)
-}
-
-func (b *Bot) QuitOnTimeout(args ...int) {
-	dft := 3
-
-	sec := FirstOrDefault(dft, args...)
-	if sec == 0 {
-		return
-	}
-
-	if sec < 0 {
-		QuitIfY()
-		return
-	}
-
-	SleepWithSpin(sec)
 }
 
 func (b *Bot) CustomizePage() {
@@ -70,7 +55,6 @@ func (b *Bot) pie(err error) {
 	case PanicByDump:
 		dump.P(err)
 		xpretty.DumpCallerStack()
-		QuitIfY()
 	case PanicByLogError:
 		log.Error().Err(err).Msg("error of bot")
 	case PanicByLogFatal:
@@ -82,7 +66,8 @@ func (b *Bot) pie(err error) {
 
 func (b *Bot) MustOpen(url string) {
 	if err := b.Open(url); err != nil {
-		log.Fatal().Err(err).Msg("cannot open page")
+		log.Error().Err(err).Msg("cannot open page")
+		return
 	}
 
 	// when page is loaded, set timeout to medium timeout
@@ -90,9 +75,8 @@ func (b *Bot) MustOpen(url string) {
 
 	if b.cookieFile != "" || b.withCookies {
 		b.LoadCookies(b.cookieFile)
+		b.page.Reload()
 	}
-
-	b.page.Reload()
 }
 
 func (b *Bot) Open(url string) error {
@@ -105,6 +89,10 @@ func (b *Bot) Open(url string) error {
 
 func (b *Bot) Page() *rod.Page {
 	return b.page
+}
+
+func (b *Bot) Browser() *rod.Browser {
+	return b.browser
 }
 
 func (b *Bot) CurrentUrl() string {
@@ -143,5 +131,9 @@ func (b *Bot) PageSource() string {
 }
 
 func (b *Bot) MustStable() {
-	b.page.MustWaitStable()
+	b.page.Timeout(b.mediumToSec).MustWaitStable().CancelTimeout()
+}
+
+func (b *Bot) MustWaitLoad() {
+	b.page.Timeout(b.mediumToSec).MustWaitLoad().CancelTimeout()
 }

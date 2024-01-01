@@ -14,6 +14,8 @@ type Bot struct {
 	browser  *rod.Browser
 	page     *rod.Page
 
+	userMode bool
+
 	headless    bool
 	withCookies bool
 
@@ -21,9 +23,8 @@ type Bot struct {
 
 	root *rod.Element
 
-	// browserOnly is used when we init browser only.
-	browserOnly bool
-	userAgent   string
+	withPage  bool
+	userAgent string
 
 	highlightTimes int
 
@@ -40,7 +41,7 @@ type Bot struct {
 }
 
 func NewBot(options ...BotOption) *Bot {
-	bot := &Bot{}
+	bot := &Bot{withPage: true}
 	bot.Init()
 
 	bindBotOptions(bot, options...)
@@ -51,7 +52,7 @@ func NewBot(options ...BotOption) *Bot {
 		bot.browser = brw
 	}
 
-	if !bot.browserOnly {
+	if bot.withPage {
 		bot.CustomizePage()
 	}
 
@@ -68,6 +69,13 @@ func NewBotDefault(options ...BotOption) *Bot {
 func NewBotDebug(options ...BotOption) *Bot {
 	l, brw := NewBrowser(WithPaintRects(true))
 	options = append(options, WithLauncher(l), WithBrowser(brw))
+
+	return NewBot(options...)
+}
+
+func NewBotUserMode(options ...BotOption) *Bot {
+	l, brw := NewUserMode()
+	options = append(options, WithLauncher(l), WithBrowser(brw), setUserMode(true))
 
 	return NewBot(options...)
 }
@@ -106,9 +114,9 @@ func WithHighlightTimes(i int) BotOption {
 	}
 }
 
-func WithBrowserOnly(b bool) BotOption {
+func WithPage(b bool) BotOption {
 	return func(o *Bot) {
-		o.browserOnly = b
+		o.withPage = b
 	}
 }
 
@@ -127,6 +135,12 @@ func WithCookieFile(s string) BotOption {
 func Headless(b bool) BotOption {
 	return func(o *Bot) {
 		o.headless = b
+	}
+}
+
+func setUserMode(b bool) BotOption {
+	return func(o *Bot) {
+		o.userMode = b
 	}
 }
 

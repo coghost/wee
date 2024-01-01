@@ -13,7 +13,7 @@ func main() {
 	bot := wee.NewBotDefault()
 
 	defer bot.Cleanup()
-	defer bot.QuitOnTimeout(2)
+	defer wee.QuitOnTimeout(2)
 
 	bot.MustOpen(home)
 	elem, _ := bot.Elem(button)

@@ -19,8 +19,8 @@ const (
 )
 
 const (
-	// NearlyNonToSec a very short timeout in second
-	NearlyNonToMills = 0.01
+	// PT10MilliSec a very short timeout in millisecond
+	PT10MilliSec = 0.01
 )
 
 type PanicByType int

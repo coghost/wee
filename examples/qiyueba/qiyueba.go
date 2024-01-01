@@ -32,7 +32,7 @@ func main() {
 	)
 
 	defer bot.Cleanup()
-	defer bot.Blocked()
+	defer wee.Blocked()
 
 	bot.MustOpen(home)
 

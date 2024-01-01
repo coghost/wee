@@ -1,15 +1,25 @@
 package wee
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/launcher/flags"
+	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 )
 
 const PaintRects = "--show-paint-rects"
+
+func NewUserMode() (*launcher.Launcher, *rod.Browser) {
+	l, wsURL := newUserModeLauncher()
+	browser := rod.New().ControlURL(wsURL).MustConnect().NoDefaultDevice()
+
+	return l, browser
+}
 
 func NewBrowser(opts ...BrowserOptionFunc) (*launcher.Launcher, *rod.Browser) {
 	delay := 500
@@ -43,6 +53,22 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 	return lauch
 }
 
+func newUserModeLauncher() (*launcher.Launcher, string) {
+	launch := launcher.NewUserMode()
+
+	wsURL, err := launch.Launch()
+	if err != nil {
+		s := fmt.Sprintf("%s", err)
+		if strings.Contains(s, "[launcher] Failed to get the debug url: Opening in existing browser session") {
+			fmt.Printf("%[1]s\nlaunch chrome browser failed, please make sure it is closed, and then run again\n%[1]s\n", strings.Repeat("=", 32)) // nolint
+		}
+
+		log.Fatal().Err(err).Msg("cannot launch browser")
+	}
+
+	return launch, wsURL
+}
+
 func setLauncher(client *launcher.Launcher, headless bool) {
 	client.
 		Set("no-first-run").
@@ -58,42 +84,8 @@ func setLauncher(client *launcher.Launcher, headless bool) {
 		Headless(headless)
 }
 
-type BrowserOptions struct {
-	slowDelay  int
-	paintRects bool
-	headless   bool
-	flags      []string
-}
-
-type BrowserOptionFunc func(o *BrowserOptions)
-
-func bindBrowserOptions(opt *BrowserOptions, opts ...BrowserOptionFunc) {
-	for _, f := range opts {
-		f(opt)
-	}
-}
-
-func WithPaintRects(b bool) BrowserOptionFunc {
-	return func(o *BrowserOptions) {
-		o.paintRects = b
-	}
-}
-
-func WithSlowDelay(i int) BrowserOptionFunc {
-	return func(o *BrowserOptions) {
-		o.slowDelay = i
-	}
-}
-
-func WithFlags(arr ...string) BrowserOptionFunc {
-	return func(o *BrowserOptions) {
-		o.flags = append(o.flags, arr...)
-		o.flags = lo.Uniq(o.flags)
-	}
-}
-
-func WithBrowserHeadless(b bool) BrowserOptionFunc {
-	return func(o *BrowserOptions) {
-		o.headless = b
-	}
+func loadProxyExtension(l *launcher.Launcher, proxyLine string) {
+	extensionFolder, _, _ := NewChromeExtension(proxyLine, "/tmp")
+	l.Set("load-extension", extensionFolder)
+	log.Info().Str("extension_folder", extensionFolder).Msg("load proxy extension")
 }
