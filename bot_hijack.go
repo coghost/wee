@@ -6,12 +6,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type HijactResp struct {
-	Pattern string
-	Uri     string
-	Body    string
-}
-
 func (b *Bot) HijackNetwork(brw *rod.Browser, patterns []string, resourceType proto.NetworkResourceType, callback func(a, b string)) {
 	if len(patterns) == 0 {
 		return
@@ -28,6 +22,7 @@ func (b *Bot) HijackNetwork(brw *rod.Browser, patterns []string, resourceType pr
 				log.Info().Str("pattern", pattern).Str("uri", uri).Msg("hijacked")
 				callback(uri, body)
 			}
+
 			ctx.ContinueRequest(&proto.FetchContinueRequest{})
 		})
 	}

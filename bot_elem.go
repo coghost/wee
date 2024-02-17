@@ -213,6 +213,7 @@ func (b *Bot) getElem(selector string, opts ...ElemOptionFunc) (*rod.Element, er
 		if opt.iframe != nil {
 			page = opt.iframe
 		}
+
 		elem, err = page.Timeout(dur).Element(selector)
 	}
 
@@ -321,6 +322,7 @@ func (b *Bot) AnyElemWithTimeout(selectors []string, opts ...ElemOptionFunc) (st
 		for _, s := range selectors {
 			b.appendToRace(s, &sel, r)
 		}
+
 		r.MustDo()
 	})
 

@@ -2,6 +2,7 @@ package mini
 
 import (
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -23,182 +24,143 @@ const (
 	SerpNoJobs
 )
 
-const TimeoutPerPageSeconds = 100
-
-type (
-	Searcher interface {
-		MockOpen() bool
-		MockInput(arr ...string) SerpStatus
-	}
-
-	Responser interface {
-		ResponsePageData() *string
-		GotoNextPage() error
-		MockHumanWait()
-	}
-
-	Extractor interface {
-		ParseResultsCount() (string, float64)
-	}
-)
+const PerPageMaxDwellSeconds = 100
 
 type Crawler struct {
-	searcher  Searcher
+	requester Requester
 	extractor Extractor
 	responser Responser
-	storage   storage.Backend
-	Queue     IQueue
 
-	site       int
-	searchTerm string
-	status     SerpStatus
-	startTime  time.Time
+	storage storage.Backend
+	Queue   IQueue
 
-	maxPages int
-	pageNum  int
-
-	resultsCount  float64
-	resultsLoaded float64
-
-	filepath string
+	site         int
+	searchTerm   string
+	startTime    time.Time
+	startPageNum int // startPageNum by default set to 1
+	pageNum      int
+	resultsCount float64
 
 	bot    *wee.Bot
-	kwargs *schemer.Kwargs
-
-	// startPageNum by default set to 1
-	startPageNum int
+	scheme *schemer.Scheme
 }
 
-func NewCrawler(site int, search Searcher, resp Responser, extract Extractor, store storage.Backend) *Crawler {
+func NewCrawler(site int, bot *wee.Bot, scheme *schemer.Scheme, requester Requester, resp Responser, extract Extractor, store storage.Backend, queue IQueue) *Crawler {
 	return &Crawler{
-		searcher:  search,
+		site: site,
+
+		bot:    bot,
+		scheme: scheme,
+
+		requester: requester,
 		responser: resp,
 		extractor: extract,
 		storage:   store,
+		Queue:     queue,
 
-		site:         site,
 		startPageNum: 1,
+		startTime:    time.Now(),
 	}
 }
 
-func NewDefaultCrawler(site int, bot *wee.Bot, scheme *schemer.Scheme) *Crawler {
+func NewTextInputCrawler(site int, bot *wee.Bot, scheme *schemer.Scheme) *Crawler {
 	shadow := NewShadow(bot, scheme)
-	sch := &ClickSearcher{Shadow: shadow}
-	resp := &Response{Shadow: shadow}
-	extractor := &HtmlExtractor{Shadow: shadow}
+	req := NewRequest(shadow, newTextInput(bot))
+	resp := NewResponse(shadow)
+	extractor := NewHtmlExtractor(shadow)
 	backend := storage.NewLocalFilesystemBackend("/tmp")
-	qname := goconcurrentqueue.NewFIFO()
+	fifo := goconcurrentqueue.NewFIFO()
 
-	return &Crawler{
-		site:     site,
-		maxPages: sch.Kwargs.MaxPages,
-
-		bot:    bot,
-		kwargs: scheme.Kwargs,
-
-		searcher:  sch,
-		responser: resp,
-		extractor: extractor,
-		storage:   backend,
-
-		Queue: qname,
-
-		startPageNum: 1,
-	}
+	return NewCrawler(site, bot, scheme, req, resp, extractor, backend, fifo)
 }
 
 func (c *Crawler) String() string {
-	return fmt.Sprintf("[SITE-%d]: %s, want(%d), start@%d, end@%d", c.site, c.searchTerm, c.maxPages, c.startPageNum, c.pageNum)
+	return fmt.Sprintf("[SITE-%d]: %s, want(%d), start@%d, end@%d", c.site, c.searchTerm, c.scheme.Kwargs.MaxPages, c.startPageNum, c.pageNum)
 }
 
 func (c *Crawler) GetSerps(keywords ...string) {
-	c.startTime = time.Now()
-
 	c.searchTerm = strings.Join(keywords, "_")
 
-	c.searcher.MockOpen()
-
-	if c.searcher.MockInput(keywords...) != SerpOk {
+	if c.requester.MockInput(keywords...) != SerpOk {
 		return
 	}
 
-	txt, count := c.extractor.ParseResultsCount()
-	c.resultsCount = count
-	log.Info().Str("count_txt", txt).Float64("count", count).Msg("got number of results")
+	var txt string
+	txt, c.resultsCount = c.extractor.ResultsCount()
+	log.Info().Str("count_txt", txt).Float64("count", c.resultsCount).Msg("got number of results")
 
-	startPage := c.startPageNum
-	maxPages := c.kwargs.MaxPages + startPage
+	maxPages := c.scheme.Kwargs.MaxPages + c.startPageNum
 
-	success := make(chan bool)
-
-	for i := startPage; i < maxPages; i++ {
+	for i := c.startPageNum; i < maxPages; i++ {
 		c.pageNum = i
+		log.Debug().Int("page_num", c.pageNum).Msg("crawling page")
 
-		go func() {
-			success <- c.getSerp(maxPages)
-		}()
+		c.saveCaptured()
 
-		select {
-		case res := <-success:
-			if !res {
-				break
-			}
-		case <-time.After(time.Duration(TimeoutPerPageSeconds) * time.Second):
+		if maxPages-1 == c.pageNum {
+			// when max page reached, no need to load next page content,
+			// we just scroll to bottom in case page contents are not fully loaded.
+			c.bot.MustScrollToBottom(wee.WithHumanized(true))
+			break
+		}
+
+		if !c.gotoNextPageInTime(c.pageNum) {
 			break
 		}
 	}
 }
 
-func (c *Crawler) getSerp(maxPages int) bool {
-	log.Debug().Int("page_num", c.pageNum).Msg("crawling page")
+func (c *Crawler) gotoNextPageInTime(pageNum int) bool {
+	success := make(chan error)
 
-	pageData := c.responser.ResponsePageData()
-	c.SaveCaptured(pageData)
+	go func() {
+		success <- c.gotoNextPage()
+	}()
 
-	if maxPages-1 == c.pageNum {
-		// break when final page reached
-		c.bot.MustScrollToBottom()
+	select {
+	case err := <-success:
+		if err != nil {
+			log.Error().Err(err).Int("page_num", pageNum).Msg("get serp failed")
+			return false
+		}
+	case <-time.After(time.Duration(PerPageMaxDwellSeconds) * time.Second):
+		log.Error().Int("page_num", pageNum).Msg("get serp timeout")
 		return false
 	}
-
-	err := c.responser.GotoNextPage()
-	if err != nil {
-		return false
-	}
-
-	c.responser.MockHumanWait()
-	// reset start time
-	c.startTime = time.Now()
 
 	return true
 }
 
-func (c *Crawler) uniqName() string {
-	name := fmt.Sprintf("%s_%s_%d", getUniqid(), c.searchTerm, c.pageNum)
-	name = strings.ReplaceAll(name, "/", "-")
+func (c *Crawler) gotoNextPage() error {
+	err := c.requester.GotoNextPage()
+	if err != nil {
+		return err
+	}
 
-	return name
+	c.requester.MockHumanWait()
+
+	return nil
 }
 
-func (c *Crawler) SaveCaptured(content *string) bool {
+func (c *Crawler) saveCaptured() bool {
+	content := c.responser.PageData()
+
 	if content == nil {
 		return true
 	}
 
-	pageType := _pageTypeHTML
-	if IsJSON(*content) {
-		pageType = _pageTypeJSON
-	}
+	pageType := c.responser.PageType()
 
 	filePath := fmt.Sprintf("%d/%s.%s", c.site, c.uniqName(), pageType)
-	c.filepath = filePath
 
 	if err := c.storage.PutObject(filePath, []byte(*content)); err != nil {
 		log.Error().Err(err).Str("filepath", filePath).Msg("cannot save captured data")
 		return false
 	}
 
-	sd := c.newSerpDirective(content)
+	sd := c.newSerpDirective(filePath, content)
+	// reset start time
+	c.startTime = time.Now()
 
 	raw, err := wee.Stringify(sd)
 	if err != nil {
@@ -206,14 +168,21 @@ func (c *Crawler) SaveCaptured(content *string) bool {
 		return false
 	}
 
-	fmt.Println(raw)
 	c.Queue.Enqueue(raw)
 
 	return true
 }
 
+func (c *Crawler) uniqName() string {
+	uid := fmt.Sprintf("%s_%f", xdtm.UTCNow().ToRfc3339MicroString(), rand.Float64())
+	name := fmt.Sprintf("%s_%s_%d", uid, c.searchTerm, c.pageNum)
+	name = strings.ReplaceAll(name, "/", "-")
+
+	return name
+}
+
 // newSerpDirective.
-func (c *Crawler) newSerpDirective(raw *string) *SerpDirective {
+func (c *Crawler) newSerpDirective(filepath string, raw *string) *SerpDirective {
 	st := strings.ReplaceAll(c.searchTerm, ">", "_")
 	serpId := fmt.Sprintf("%d_%s_%s", c.site, xdtm.UTCNow().ToShortDateTimeString(), st)
 
@@ -222,14 +191,14 @@ func (c *Crawler) newSerpDirective(raw *string) *SerpDirective {
 		PageNum:  c.pageNum,
 		PageSize: len(*raw),
 
-		ResultsLoaded: c.resultsLoaded,
+		ResultsLoaded: c.extractor.ResultsLoaded(),
 		ResultsCount:  c.resultsCount,
 
-		TimeOnPage: time.Since(c.startTime).Seconds(),
-		Filepath:   c.filepath,
-		SerpUrl:    c.bot.CurrentUrl(),
-		SearchTerm: c.searchTerm,
-		SerpID:     serpId,
+		PageDwellTime: time.Since(c.startTime).Seconds(),
+		Filepath:      filepath,
+		SerpUrl:       c.bot.CurrentUrl(),
+		SearchTerm:    c.searchTerm,
+		SerpID:        serpId,
 	}
 }
 
@@ -238,10 +207,10 @@ type SerpDirective struct {
 	PageNum  int `json:"page_num"`
 	PageSize int `json:"page_size"`
 
-	ResultsLoaded float64 `json:"results_loaded"`
+	ResultsLoaded int     `json:"results_loaded"`
 	ResultsCount  float64 `json:"results_count"`
 
-	TimeOnPage float64 `json:"time_on_page"`
+	PageDwellTime float64 `json:"page_dwell_time"`
 
 	Filepath   string `json:"filepath"`
 	SerpUrl    string `json:"serp_url"`

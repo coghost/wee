@@ -1,6 +1,7 @@
 package wee
 
 import (
+	"errors"
 	"math"
 	"math/rand"
 	"time"
@@ -9,28 +10,35 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 )
 
+var ErrElemShapeBox = errors.New("cannot get element box by shape.Box()")
+
 func (b *Bot) ScrollToElement(elem *rod.Element, opts ...ElemOptionFunc) {
 	b.scrollToElement(elem, opts...)
 }
 
-func (b *Bot) scrollToElement(elem *rod.Element, opts ...ElemOptionFunc) {
+func (b *Bot) scrollToElement(elem *rod.Element, opts ...ElemOptionFunc) error {
 	opt := ElemOptions{offsetToTop: 0.25, steps: ShortScrollStep}
 	bindElemOptions(&opt, opts...)
 
 	shape, err := elem.Shape()
 	if err != nil {
-		return
+		return err
 	}
 
 	box := shape.Box()
 	if box == nil {
-		return
+		return ErrElemShapeBox
 	}
 
 	h := b.GetWindowInnerHeight()
 	scrollDistance := box.Y - h*opt.offsetToTop
 
-	b.page.Mouse.Scroll(0.0, scrollDistance, opt.steps)
+	return b.Scroll(0.0, scrollDistance, opt.steps)
+}
+
+// Scroll Scroll with mouse.
+func (b *Bot) Scroll(x, y float64, step int) error {
+	return b.page.Mouse.Scroll(x, y, step)
 }
 
 func (b *Bot) ScrollToElemDirectly(elem *rod.Element) error {
@@ -39,7 +47,7 @@ func (b *Bot) ScrollToElemDirectly(elem *rod.Element) error {
 		return err
 	}
 
-	return b.page.Mouse.Scroll(0.0, box.Y, 1)
+	return b.Scroll(0.0, box.Y, 1)
 }
 
 func (b *Bot) MustScrollToXY(x, y float64) {
@@ -48,7 +56,6 @@ func (b *Bot) MustScrollToXY(x, y float64) {
 
 func (b *Bot) MustScrollToTop() {
 	h := b.GetScrollHeight()
-	// e := b.page.Mouse.Scroll(0, -h, MediumScrollStep)
 	e := b.ScrollLikeHuman(0, -h)
 	b.pie(e)
 }
@@ -60,8 +67,6 @@ func (b *Bot) MustScrollToBottom(opts ...ElemOptionFunc) {
 }
 
 func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) error {
-	page := b.page
-
 	scroller := &ScrollAsHuman{
 		enabled:          false,
 		longSleepChance:  0.1,
@@ -73,9 +78,10 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 	bindElemOptions(&opt, opts...)
 
 	steps := MediumScrollStep
+	enabled := opt.scrollAsHuman.enabled || opt.humanized
 
-	if !opt.scrollAsHuman.enabled || steps == 0 {
-		err := page.Mouse.Scroll(offsetX, offsetY, steps)
+	if !enabled || steps == 0 {
+		err := b.Scroll(offsetX, offsetY, steps)
 
 		RandSleep(0.1, 0.2)
 		return err
@@ -98,7 +104,7 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 		// handle too slow scroll
 		cost := time.Since(startAt).Seconds()
 		if cost > tooSlowTimeoutSec {
-			err := page.Mouse.Scroll(offsetX, totalOffsetNeeded-totalScrolled, 1)
+			err := b.Scroll(offsetX, totalOffsetNeeded-totalScrolled, 1)
 
 			RandSleep(0.1, 0.2)
 			return err
@@ -131,7 +137,7 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 			distance = -distance
 		}
 
-		if e := page.Mouse.Scroll(offsetX, float64(distance), steps); e != nil {
+		if e := b.Scroll(offsetX, float64(distance), steps); e != nil {
 			return e
 		}
 

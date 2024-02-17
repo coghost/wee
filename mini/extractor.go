@@ -1,28 +1,24 @@
 package mini
 
 import (
-	"encoding/json"
-	"fmt"
-	"math/rand"
-	"regexp"
 	"strings"
 
 	"wee"
 
-	"github.com/coghost/xdtm"
-	"github.com/spf13/cast"
-)
-
-const (
-	_pageTypeHTML = "html"
-	_pageTypeJSON = "json"
+	"github.com/rs/zerolog/log"
 )
 
 type HtmlExtractor struct {
 	*Shadow
 }
 
-func (c *HtmlExtractor) ParseResultsCount() (string, float64) {
+func NewHtmlExtractor(s *Shadow) *HtmlExtractor {
+	return &HtmlExtractor{
+		Shadow: s,
+	}
+}
+
+func (c *HtmlExtractor) ResultsCount() (string, float64) {
 	sel := c.Mapper.ResultsCount
 	if sel == "" {
 		return "", 0
@@ -35,29 +31,21 @@ func (c *HtmlExtractor) ParseResultsCount() (string, float64) {
 		txt = strings.Split(txt, rc.AttrSep)[rc.AttrIndex]
 	}
 
-	return txt, MustStrToFloat(txt, rc.CharsAllowed)
+	return txt, wee.MustStrToFloat(txt, rc.CharsAllowed)
 }
 
-func StrToNumChars(raw string, keptChars string) string {
-	chars := "[0-9" + keptChars + "]+"
-	re := regexp.MustCompile(chars)
-	c := re.FindAllString(raw, -1)
-	r := strings.Join(c, "")
+func (c *HtmlExtractor) ResultsLoaded() int {
+	count := 0
 
-	return r
-}
+	for _, s := range c.Mapper.HasResults {
+		elems, err := c.Bot.Elems(s)
+		if err != nil {
+			log.Error().Str("selector", s).Msg("cannot get elems")
+			continue
+		}
 
-func MustStrToFloat(raw string, keptChars string) float64 {
-	v := StrToNumChars(raw, keptChars)
-	return cast.ToFloat64(v)
-}
+		count += len(elems)
+	}
 
-func IsJSON(str string) bool {
-	var js json.RawMessage
-	return json.Unmarshal([]byte(str), &js) == nil
-}
-
-func getUniqid() string {
-	name := fmt.Sprintf("%s_%f", xdtm.UTCNow().ToRfc3339MicroString(), rand.Float64())
-	return name
+	return count
 }

@@ -8,10 +8,12 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/spf13/cast"
 )
 
 // FirstOrDefault
@@ -57,7 +59,7 @@ func RandSleep(min, max float64, msg ...string) int {
 //
 //	str slice with each has (~)maxLen chars
 func NewStringSlice(raw string, fixStep int, randomStep ...bool) []string {
-	rand.Seed(time.Now().Unix())
+	rand.NewSource(time.Now().Unix())
 
 	var ret []string
 
@@ -191,4 +193,23 @@ func Stringify(data interface{}) (string, error) {
 	}
 
 	return string(b), nil
+}
+
+func MustStrToFloat(raw string, keptChars string) float64 {
+	v := StrToNumChars(raw, keptChars)
+	return cast.ToFloat64(v)
+}
+
+func StrToNumChars(raw string, keptChars string) string {
+	chars := "[0-9" + keptChars + "]+"
+	re := regexp.MustCompile(chars)
+	c := re.FindAllString(raw, -1)
+	r := strings.Join(c, "")
+
+	return r
+}
+
+func IsJSON(str string) bool {
+	var js json.RawMessage
+	return json.Unmarshal([]byte(str), &js) == nil
 }

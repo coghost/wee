@@ -1,52 +1,33 @@
 package mini
 
-import (
-	"context"
-	"errors"
-
-	"wee"
-
-	"github.com/rs/zerolog/log"
-)
-
 type Response struct {
 	*Shadow
+
+	pageType pageType
 }
 
-func (c *Response) GotoNextPage() error {
-	c.Bot.MustWaitLoad()
-	c.Bot.MustScrollToBottom()
-
-	elem, err := c.Bot.Elem(c.Mapper.NextPage, wee.WithTimeout(wee.NapToSec))
-	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			log.Info().Msg("final page reached")
-		} else {
-			log.Error().Err(err).Msg("cannot find next page button")
-		}
-
-		return err
+func NewResponse(s *Shadow) *Response {
+	return &Response{
+		Shadow: s,
 	}
-
-	return c.Bot.ClickElem(elem)
 }
 
-func (c *Response) ResponsePageData() *string {
+func (c *Response) PageData() *string {
 	c.Bot.MustWaitLoad()
 
 	var pageData string
 
 	if rps := c.Kwargs.ResponseParseScript; rps != "" {
 		pageData = c.Bot.MustEval(c.Kwargs.ResponseParseScript)
+		c.pageType = _pageTypeJSON
 	} else {
 		pageData = c.Bot.Page().MustHTML()
+		c.pageType = _pageTypeHTML
 	}
 
 	return &pageData
 }
 
-func (c *Response) MockHumanWait() {
-	if itv := c.Kwargs.PageInterval; itv > 0 {
-		wee.RandSleep(itv, itv+0.5)
-	}
+func (c *Response) PageType() pageType {
+	return c.pageType
 }

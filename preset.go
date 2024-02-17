@@ -29,11 +29,10 @@ const (
 	PanicByDft PanicByType = iota
 	PanicByDump
 	PanicByLogError
-	PanicByLogFatal
 )
 
 const (
-	longScrollStep     = 32
+	LongScrollStep     = 32
 	MediumScrollStep   = 16
 	ShortScrollStep    = 8
 	QuickScrollStep    = 4

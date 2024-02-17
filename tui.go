@@ -30,15 +30,15 @@ func QuitOnTimeout(args ...int) {
 	SleepWithSpin(sec)
 }
 
-func SleepWithSpin(n int, args ...string) {
-	msg := fmt.Sprintf("Wait for %d seconds before quitting ...", n)
+func SleepWithSpin(timeInSeconds int, args ...string) {
+	msg := fmt.Sprintf("Wait for %d seconds before quitting ...", timeInSeconds)
 	if len(args) > 0 {
 		msg = args[0]
 	}
 
 	spinnerInfo, _ := pterm.DefaultSpinner.Start(xpretty.Yellow(msg))
 
-	time.Sleep(time.Second * time.Duration(n))
+	time.Sleep(time.Second * time.Duration(timeInSeconds))
 	spinnerInfo.Info()
 }
 
