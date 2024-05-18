@@ -1,6 +1,6 @@
 module wee
 
-go 1.21.3
+go 1.22.3
 
 require (
 	github.com/chartmuseum/storage v0.14.1
@@ -8,7 +8,7 @@ require (
 	github.com/coghost/xlog v0.0.0-20230716144445-6540bb650d52
 	github.com/coghost/xpretty v0.0.0-20240109082848-b154112aa0aa
 	github.com/enriquebris/goconcurrentqueue v0.7.0
-	github.com/go-rod/rod v0.114.5
+	github.com/go-rod/rod v0.116.0
 	github.com/goccy/go-yaml v1.11.2
 	github.com/gookit/config/v2 v2.2.4
 	github.com/gookit/goutil v0.6.15
@@ -91,7 +91,7 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/ysmood/fetchup v0.2.4 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
-	github.com/ysmood/got v0.39.4 // indirect
+	github.com/ysmood/got v0.39.5 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
 	go.etcd.io/etcd/api/v3 v3.5.4 // indirect

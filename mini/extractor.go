@@ -8,17 +8,19 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type HtmlExtractor struct {
+type HTMLExtractor struct {
 	*Shadow
+	Bot *wee.Bot
 }
 
-func NewHtmlExtractor(s *Shadow) *HtmlExtractor {
-	return &HtmlExtractor{
+func NewHTMLExtractor(s *Shadow, bot *wee.Bot) *HTMLExtractor {
+	return &HTMLExtractor{
 		Shadow: s,
+		Bot:    bot,
 	}
 }
 
-func (c *HtmlExtractor) ResultsCount() (string, float64) {
+func (c *HTMLExtractor) ResultsCount() (string, float64) {
 	sel := c.Mapper.ResultsCount
 	if sel == "" {
 		return "", 0
@@ -34,7 +36,7 @@ func (c *HtmlExtractor) ResultsCount() (string, float64) {
 	return txt, wee.MustStrToFloat(txt, rc.CharsAllowed)
 }
 
-func (c *HtmlExtractor) ResultsLoaded() int {
+func (c *HTMLExtractor) ResultsLoaded() int {
 	count := 0
 
 	for _, s := range c.Mapper.HasResults {

@@ -2,6 +2,7 @@ package mini
 
 type (
 	Requester interface {
+		MockOpen(urls ...string) error
 		MockInput(arr ...string) SerpStatus
 		GotoNextPage() error
 		MockHumanWait()

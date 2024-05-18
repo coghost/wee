@@ -17,6 +17,8 @@ type Bot struct {
 	browser  *rod.Browser
 	page     *rod.Page
 
+	isLaunched bool
+
 	userMode bool
 
 	headless    bool
@@ -59,7 +61,38 @@ func NewBot(options ...BotOption) *Bot {
 		bot.CustomizePage()
 	}
 
+	bot.isLaunched = true
+
 	return bot
+}
+
+func NewBotOnlyBindOptions(options ...BotOption) *Bot {
+	bot := &Bot{}
+	bot.Init()
+
+	bindBotOptions(bot, options...)
+
+	return bot
+}
+
+// UpdateBotWithOption launches browser and page for bot.
+func UpdateBotWithOption(bot *Bot, options ...BotOption) {
+	if bot.isLaunched {
+		return
+	}
+
+	l, brw := NewBrowser()
+	options = append(options, WithLauncher(l), WithBrowser(brw))
+	bindBotOptions(bot, options...)
+
+	if bot.headless {
+		l, brw := NewBrowser(WithBrowserHeadless(bot.headless))
+		bot.launcher = l
+		bot.browser = brw
+	}
+
+	bot.CustomizePage()
+	bot.isLaunched = true
 }
 
 func NewBotDefault(options ...BotOption) *Bot {

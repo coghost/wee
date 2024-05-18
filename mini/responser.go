@@ -1,14 +1,18 @@
 package mini
 
+import "wee"
+
 type Response struct {
 	*Shadow
 
+	Bot      *wee.Bot
 	pageType pageType
 }
 
-func NewResponse(s *Shadow) *Response {
+func NewResponse(s *Shadow, bot *wee.Bot) *Response {
 	return &Response{
 		Shadow: s,
+		Bot:    bot,
 	}
 }
 

@@ -19,10 +19,17 @@ type Scheme struct {
 	Id  int    `yaml:"id,omitempty"`
 	Uid string `yaml:"uid,omitempty"`
 
+	Ctrl *Ctrl `yaml:"ctrl,omitempty"`
+
 	Mapper *Mapper `yaml:"mapper,omitempty"`
 
 	// Kwargs values of Selectors
 	Kwargs *Kwargs `yaml:"kwargs,omitempty"`
+}
+
+type Ctrl struct {
+	Humanized bool `yaml:"humanized,omitempty"`
+	Hijack    bool `yaml:"hijack,omitempty"`
 }
 
 type Mapper struct {
@@ -47,6 +54,8 @@ type Mapper struct {
 }
 
 type Kwargs struct {
+	MaxScrollTime int `yaml:"max_scroll_time,omitempty"`
+
 	MaxPages      int     `yaml:"max_pages,omitempty"`
 	NextPageIndex int     `yaml:"next_page_index,omitempty"`
 	PageInterval  float64 `yaml:"page_interval,omitempty"`
@@ -105,13 +114,15 @@ func NewScheme(raw []byte) (*Scheme, error) {
 }
 
 func NewSchemeFromFile(filename string) (*Scheme, error) {
-	// path, _ := os.Getwd()
-	// filename := path + "/examples/gocc/" + name + ".yaml"
 	raw, err := dry.FileGetBytes(filename)
 	if err != nil {
 		log.Error().Str("filename", filename).Msg("cannot load startup")
 	}
 
+	return NewSchemeFromByte(raw)
+}
+
+func NewSchemeFromByte(raw []byte) (*Scheme, error) {
 	scheme, err := NewScheme(raw)
 	if err != nil {
 		return nil, err

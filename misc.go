@@ -195,6 +195,15 @@ func Stringify(data interface{}) (string, error) {
 	return string(b), nil
 }
 
+func MustStringify(data interface{}) string {
+	b, err := Stringify(data)
+	if err != nil {
+		panic(err)
+	}
+
+	return string(b)
+}
+
 func MustStrToFloat(raw string, keptChars string) float64 {
 	v := StrToNumChars(raw, keptChars)
 	return cast.ToFloat64(v)

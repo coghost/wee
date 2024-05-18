@@ -70,7 +70,7 @@ func (b *Bot) ClickElem(elem *rod.Element, opts ...ElemOptionFunc) error {
 		return nil
 	}
 
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, &rod.ErrInvisibleShape{}) {
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, &rod.InvisibleShapeError{}) {
 		return b.ClickElemWithScript(elem, opts...)
 	}
 
@@ -88,7 +88,7 @@ func (b *Bot) EnsureInteractable(elem *rod.Element, byEsc bool) error {
 		return nil
 	}
 
-	if errors.Is(err, &rod.ErrCovered{}) && byEsc {
+	if errors.Is(err, &rod.CoveredError{}) && byEsc {
 		return b.PressEscape(elem)
 	}
 
@@ -145,9 +145,9 @@ func (b *Bot) ClickElemWithScript(elem *rod.Element, opts ...ElemOptionFunc) err
 	}
 
 	_, err = elem.Interactable()
-	if errors.Is(err, &rod.ErrObjectNotFound{}) ||
+	if errors.Is(err, &rod.ObjectNotFoundError{}) ||
 		errors.Is(err, context.DeadlineExceeded) ||
-		errors.Is(err, &rod.ErrInvisibleShape{}) {
+		errors.Is(err, &rod.InvisibleShapeError{}) {
 		return nil
 	}
 

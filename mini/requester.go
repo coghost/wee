@@ -3,6 +3,7 @@ package mini
 import (
 	"context"
 	"errors"
+	"time"
 
 	"wee"
 
@@ -13,6 +14,8 @@ import (
 
 type Request struct {
 	*Shadow
+
+	Bot     *wee.Bot
 	inputer Inputer
 }
 
@@ -20,24 +23,21 @@ type Inputer interface {
 	Input(bot *wee.Bot, selectors []string, arr ...string) error
 }
 
-func NewRequest(shadow *Shadow, inputer Inputer) *Request {
-	return &Request{Shadow: shadow, inputer: inputer}
+func NewRequest(shadow *Shadow, bot *wee.Bot, inputer Inputer) *Request {
+	return &Request{Shadow: shadow, Bot: bot, inputer: inputer}
 }
 
-func (c *Request) MockOpen() bool {
-	c.Bot.MustOpen(c.Mapper.Home)
-	c.Bot.MustAcceptCookies(c.Mapper.Cookies...)
-
-	return true
+func (c *Request) MockOpen(urls ...string) error {
+	uri := wee.FirstOrDefault(c.Mapper.Home, urls...)
+	return c.Bot.Open(uri)
 }
 
 func (c *Request) MockInput(arr ...string) SerpStatus {
-	if !c.MockOpen() {
-		return SerpFailed
-	}
+	c.Bot.MustAcceptCookies(c.Mapper.Cookies...)
 
 	if err := c.inputer.Input(c.Bot, c.Mapper.Inputs, arr...); err != nil {
-		return SerpFailed
+		log.Warn().Err(err).Msg("cannot input")
+		return SerpCannotInput
 	}
 
 	if c.Mapper.Submit != "" {
@@ -53,7 +53,12 @@ func (c *Request) ensureSerp() SerpStatus {
 
 func (c *Request) GotoNextPage() error {
 	c.Bot.MustWaitLoad()
-	c.Bot.MustScrollToBottom(wee.WithHumanized(true))
+
+	if t := c.Kwargs.MaxScrollTime; t != 0 {
+		c.scrollToBottom(t, c.Scheme.Ctrl.Humanized)
+	} else {
+		c.Bot.MustScrollToBottom(wee.WithHumanized(c.Scheme.Ctrl.Humanized))
+	}
 
 	elem, err := c.Bot.Elem(c.Mapper.NextPage, wee.WithTimeout(wee.NapToSec))
 	if err != nil {
@@ -67,6 +72,22 @@ func (c *Request) GotoNextPage() error {
 	}
 
 	return c.Bot.ClickElem(elem)
+}
+
+func (c *Request) scrollToBottom(maxScrollTime int, humanized bool) {
+	success := make(chan error)
+
+	go func() {
+		c.Bot.MustScrollToBottom(wee.WithHumanized(humanized))
+		success <- nil
+	}()
+
+	select {
+	case <-success:
+	case <-time.After(time.Duration(maxScrollTime) * time.Second):
+		log.Debug().Msg("timeout reached.")
+		c.Bot.MustScrollToBottom()
+	}
 }
 
 func (c *Request) MockHumanWait() {
@@ -105,6 +126,10 @@ func newTextInput(bot *wee.Bot) *TextInput {
 
 func (c *TextInput) Input(bot *wee.Bot, selectors []string, arr ...string) error {
 	for i, v := range arr {
+		if v == "" {
+			continue
+		}
+
 		_, err := c.bot.Input(selectors[i], v)
 		if err != nil {
 			return err

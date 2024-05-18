@@ -17,14 +17,20 @@ func (b *Bot) CustomizePage() {
 	b.page = b.page.MustSetWindow(0, 0, w, h)
 }
 
-func (b *Bot) MustOpen(url string) {
+func (b *Bot) MustOpen(url string, timeouts ...time.Duration) {
 	if err := b.Open(url); err != nil {
 		log.Error().Err(err).Msg("cannot open page")
 		return
 	}
 
 	// when page is loaded, set timeout to medium timeout
-	b.page.Timeout(b.mediumToSec)
+
+	timeout := b.longToSec
+	if len(timeouts) > 0 {
+		timeout = timeouts[0]
+	}
+
+	b.page.Timeout(timeout)
 
 	if b.cookieFile != "" || b.withCookies {
 		b.LoadCookies(b.cookieFile)
