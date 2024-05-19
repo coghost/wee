@@ -5,7 +5,6 @@ import (
 )
 
 type Shadow struct {
-	// Bot    *wee.Bot
 	Scheme *schemer.Scheme
 	Mapper *schemer.Mapper
 	Kwargs *schemer.Kwargs
@@ -13,7 +12,6 @@ type Shadow struct {
 
 func NewShadow(scheme *schemer.Scheme) *Shadow {
 	return &Shadow{
-		// Bot:    bot,
 		Scheme: scheme,
 		Mapper: scheme.Mapper,
 		Kwargs: scheme.Kwargs,

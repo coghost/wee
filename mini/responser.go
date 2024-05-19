@@ -6,7 +6,7 @@ type Response struct {
 	*Shadow
 
 	Bot      *wee.Bot
-	pageType pageType
+	pageType PageType
 }
 
 func NewResponse(s *Shadow, bot *wee.Bot) *Response {
@@ -16,22 +16,22 @@ func NewResponse(s *Shadow, bot *wee.Bot) *Response {
 	}
 }
 
-func (c *Response) PageData() *string {
+func (c *Response) PageData() (PageType, *string) {
 	c.Bot.MustWaitLoad()
 
 	var pageData string
 
 	if rps := c.Kwargs.ResponseParseScript; rps != "" {
 		pageData = c.Bot.MustEval(c.Kwargs.ResponseParseScript)
-		c.pageType = _pageTypeJSON
+		c.pageType = PageTypeJSON
 	} else {
 		pageData = c.Bot.Page().MustHTML()
-		c.pageType = _pageTypeHTML
+		c.pageType = PageTypeHTML
 	}
 
-	return &pageData
+	return c.pageType, &pageData
 }
 
-func (c *Response) PageType() pageType {
+func (c *Response) PageType() PageType {
 	return c.pageType
 }

@@ -130,7 +130,7 @@ func (b *Bot) ClickWithScript(selector string, opts ...ElemOptionFunc) error {
 }
 
 func (b *Bot) ClickElemWithScript(elem *rod.Element, opts ...ElemOptionFunc) error {
-	log.Debug().Msg("start click elem with script")
+	log.Trace().Msg("start click elem with script")
 	opt := ElemOptions{timeout: MediumToSec, highlight: true}
 	bindElemOptions(&opt, opts...)
 

@@ -75,8 +75,8 @@ func NewBotOnlyBindOptions(options ...BotOption) *Bot {
 	return bot
 }
 
-// UpdateBotWithOption launches browser and page for bot.
-func UpdateBotWithOption(bot *Bot, options ...BotOption) {
+// BindBotLanucher launches browser and page for bot.
+func BindBotLanucher(bot *Bot, options ...BotOption) {
 	if bot.isLaunched {
 		return
 	}

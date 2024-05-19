@@ -19,10 +19,6 @@ type Request struct {
 	inputer Inputer
 }
 
-type Inputer interface {
-	Input(bot *wee.Bot, selectors []string, arr ...string) error
-}
-
 func NewRequest(shadow *Shadow, bot *wee.Bot, inputer Inputer) *Request {
 	return &Request{Shadow: shadow, Bot: bot, inputer: inputer}
 }
@@ -35,7 +31,7 @@ func (c *Request) MockOpen(urls ...string) error {
 func (c *Request) MockInput(arr ...string) SerpStatus {
 	c.Bot.MustAcceptCookies(c.Mapper.Cookies...)
 
-	if err := c.inputer.Input(c.Bot, c.Mapper.Inputs, arr...); err != nil {
+	if err := c.inputer.Input(c.Mapper.Inputs, arr...); err != nil {
 		log.Warn().Err(err).Msg("cannot input")
 		return SerpCannotInput
 	}
@@ -124,7 +120,7 @@ func newTextInput(bot *wee.Bot) *TextInput {
 	return &TextInput{bot: bot}
 }
 
-func (c *TextInput) Input(bot *wee.Bot, selectors []string, arr ...string) error {
+func (c *TextInput) Input(selectors []string, arr ...string) error {
 	for i, v := range arr {
 		if v == "" {
 			continue
@@ -143,7 +139,7 @@ type ClickInput struct {
 	bot *wee.Bot
 }
 
-func (c *ClickInput) Input(bot *wee.Bot, selectors []string, arr ...string) error {
+func (c *ClickInput) Input(selectors []string, arr ...string) error {
 	for i, sel := range selectors {
 		s := fmtx.CondSprintf(sel, arr[i])
 		if err := c.bot.Click(s); err != nil {
