@@ -55,14 +55,27 @@ func (b *Bot) MustScrollToXY(x, y float64) {
 }
 
 func (b *Bot) MustScrollToTop() {
-	h := b.GetScrollHeight()
-	e := b.ScrollLikeHuman(0, -h)
+	b.ensureScrollHeight()
+
+	e := b.ScrollLikeHuman(0, -b.scrollHeight)
 	b.pie(e)
 }
 
+func (b *Bot) ensureScrollHeight() {
+	height, err := b.GetScrollHeight()
+	if err != nil {
+		if b.scrollHeight == 0 {
+			b.pie(err)
+		}
+	} else {
+		b.scrollHeight = height
+	}
+}
+
 func (b *Bot) MustScrollToBottom(opts ...ElemOptionFunc) {
-	h := b.GetScrollHeight()
-	e := b.ScrollLikeHuman(0, h, opts...)
+	b.ensureScrollHeight()
+
+	e := b.ScrollLikeHuman(0, b.scrollHeight, opts...)
 	b.pie(e)
 }
 
@@ -153,9 +166,13 @@ func (b *Bot) GetWindowInnerHeight() float64 {
 	return float64(h)
 }
 
-func (b *Bot) GetScrollHeight() float64 {
-	h := b.page.Timeout(b.shortToSec).MustEval(`() => document.body.scrollHeight`).Int()
-	return float64(h)
+func (b *Bot) GetScrollHeight() (float64, error) {
+	res, err := b.page.Timeout(b.shortToSec).Eval(`() => document.body.scrollHeight`)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.Value.Num(), nil
 }
 
 func (b *Bot) GetElemBox(elem *rod.Element) (*proto.DOMRect, error) {

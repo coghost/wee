@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -221,4 +222,18 @@ func StrToNumChars(raw string, keptChars string) string {
 func IsJSON(str string) bool {
 	var js json.RawMessage
 	return json.Unmarshal([]byte(str), &js) == nil
+}
+
+// IsZeroVal check if any type is its zero value
+func IsZeroVal(x interface{}) bool {
+	return x == nil || reflect.DeepEqual(x, reflect.Zero(reflect.TypeOf(x)).Interface())
+}
+
+// AorB returns the first non zero value
+func AorB[T any](a, b T) T {
+	if !IsZeroVal(a) {
+		return a
+	}
+
+	return b
 }

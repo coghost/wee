@@ -72,6 +72,7 @@ func newUserModeLauncher() (*launcher.Launcher, string) {
 func setLauncher(client *launcher.Launcher, headless bool) {
 	// Delete("use-mock-keychain"). if add this, a popup with message: "chromium wants to use your confidential information" will shown, and you have to manually confirm it.
 	client.
+		Set("no-sandbox").
 		Set("no-first-run").
 		Set("no-startup-window").
 		Set("disable-blink-features", "AutomationControlled").
@@ -80,7 +81,6 @@ func setLauncher(client *launcher.Launcher, headless bool) {
 		Set("disable-web-security").
 		Set("disable-infobars").
 		Set("enable-automation").
-		NoSandbox(true).
 		Headless(headless)
 }
 

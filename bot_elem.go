@@ -1,6 +1,7 @@
 package wee
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -8,12 +9,15 @@ import (
 	"github.com/coghost/xpretty"
 	"github.com/go-rod/rod"
 	"github.com/rs/zerolog/log"
+	"github.com/thoas/go-funk"
 )
 
 const (
 	_logIfTimeout = 2.0
 	_iframeLen    = 2
 )
+
+var ErrSelectorEmpty = errors.New("selector is empty")
 
 func (b *Bot) MustElem(selector string, opts ...ElemOptionFunc) *rod.Element {
 	elem, err := b.Elem(selector, opts...)
@@ -92,6 +96,28 @@ func (b *Bot) ElemByText(selector string, opts ...ElemOptionFunc) (*rod.Element,
 	return elem, err
 }
 
+func (b *Bot) ElemsByText(selector string, opts ...ElemOptionFunc) ([]*rod.Element, error) {
+	arr := strings.Split(selector, SEP)
+
+	elems, err := b.elems(arr[0], opts...)
+	if err != nil {
+		return nil, fmt.Errorf("elemsByText failed get elems: %w", err)
+	}
+
+	if funk.IsEmpty(elems) {
+		return nil, nil
+	}
+
+	opts = append(opts, WithTimeout(PT10MilliSec))
+
+	elem, err := b.ElemByText(selector, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("elemsByText failed get elemByText: %w", err)
+	}
+
+	return []*rod.Element{elem}, nil
+}
+
 func (b *Bot) MustElemsForAllSelectors(selectors []string, opts ...ElemOptionFunc) []*rod.Element {
 	var elems []*rod.Element
 	for _, s := range selectors {
@@ -109,10 +135,24 @@ func (b *Bot) MustElems(selector string, opts ...ElemOptionFunc) []*rod.Element 
 }
 
 // Elems get all elements immediately.
+//
+// WARN: when use Elems(MustElems), please ensure following conditions
+//   - !!! selector cannot be empty
+//   - ??? selector cannot contain SEP: `@@@`, which means shouldn't by Text
 func (b *Bot) Elems(selector string, opts ...ElemOptionFunc) ([]*rod.Element, error) {
-	b.mustNotEmpty(selector)
-	b.mustNotByText(selector)
+	// b.mustNotEmpty(selector)
+	if selector == "" {
+		return nil, ErrSelectorEmpty
+	}
 
+	if strings.Contains(selector, SEP) {
+		return b.ElemsByText(selector, opts...)
+	}
+
+	return b.elems(selector, opts...)
+}
+
+func (b *Bot) elems(selector string, opts ...ElemOptionFunc) ([]*rod.Element, error) {
 	if ss := strings.Split(selector, IFrameSep); len(ss) == _iframeLen {
 		elem, err := b.IframeElem(ss[0], ss[1])
 		if err != nil {
@@ -179,7 +219,10 @@ func (b *Bot) ElementAttr(elem *rod.Element, opts ...ElemOptionFunc) (string, er
 }
 
 func (b *Bot) getElem(selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
-	b.mustNotEmpty(selector)
+	// b.mustNotEmpty(selector)
+	if selector == "" {
+		return nil, ErrSelectorEmpty
+	}
 
 	opt := ElemOptions{root: b.root, timeout: ShortToSec}
 	bindElemOptions(&opt, opts...)
@@ -287,7 +330,7 @@ func (b *Bot) mustNotByText(selector string) {
 	if strings.Contains(selector, SEP) {
 		const callerStackOffset = 2
 		w, i := xpretty.Caller(callerStackOffset)
-		log.Fatal().Str("file", w).Int("line", i).Msg("cannot use selector by text")
+		log.Fatal().Str("file", w).Int("line", i).Msg("never use selector by text in Elems")
 	}
 }
 

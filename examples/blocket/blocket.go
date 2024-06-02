@@ -6,31 +6,37 @@ import (
 	"fmt"
 
 	"wee"
-	"wee/schemer"
 
 	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
 	"github.com/k0kubun/pp/v3"
 )
 
-var blocket = schemer.Scheme{
-	Uid: "blocket.se",
-	Mapper: &schemer.Mapper{
-		Home:         "https://jobb.blocket.se/",
-		Popovers:     []string{`iframe[id^="sp_message_iframe"]$$$button[class~=sp_choice_type_11]`},
-		SortBy:       schemer.NewDropdown(`div#sort-filter`, `div[data-value="sp=%s"]`),
-		HasResults:   []string{`div.job-item a.header`},
-		ResultsCount: `span[id="total-count"]`,
-		NextPage:     `div.pagination a>i.right`,
-		PageNum:      `button.blue`,
-	},
+type Settings struct {
+	Home         string
+	Popovers     []string
+	Filters      []string
+	HasResults   []string
+	ResultsCount string
+	NextPage     string
+	PageNum      string
+}
+
+var blocket = Settings{
+	Home:         "https://jobb.blocket.se/",
+	Popovers:     []string{`iframe[id^="sp_message_iframe"]$$$button[class~=sp_choice_type_11]`},
+	Filters:      []string{`div#sort-filter`, `div[data-value="sp=%s"]`},
+	HasResults:   []string{`div.job-item a.header`},
+	ResultsCount: `span[id="total-count"]`,
+	NextPage:     `div.pagination a>i.right`,
+	PageNum:      `button.blue`,
 }
 
 func main() {
 	xlog.InitLogDebug()
 	xpretty.InitializeWithColor()
 
-	selectors := blocket.Mapper
+	selectors := blocket
 
 	bot := wee.NewBotDefault(
 		wee.WithPopovers(selectors.Popovers...),
@@ -41,7 +47,7 @@ func main() {
 	defer bot.Cleanup()
 	defer wee.Blocked()
 
-	bot.MustOpen(blocket.Mapper.Home)
+	bot.MustOpen(selectors.Home)
 
 	bot.MustAcceptCookies(selectors.Popovers...)
 
@@ -52,7 +58,7 @@ func main() {
 	val := bot.MustElemAttr(selectors.ResultsCount)
 	pp.Println(val)
 
-	bot.MustClickOneByOne(selectors.SortBy.Trigger, fmt.Sprintf(selectors.SortBy.Item, "0"))
+	bot.MustClickOneByOne(selectors.Filters[0], fmt.Sprintf(selectors.Filters[1], "0"))
 
 	for i := 0; i < 0; i++ {
 		pageNum := bot.MustElemAttr(selectors.PageNum)

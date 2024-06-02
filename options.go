@@ -130,3 +130,9 @@ func WithScrollAsHuman(ah *ScrollAsHuman) ElemOptionFunc {
 		o.scrollAsHuman = ah
 	}
 }
+
+func WithSteps(i int) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.steps = i
+	}
+}

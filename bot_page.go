@@ -1,20 +1,36 @@
 package wee
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/proto"
 	"github.com/rs/zerolog/log"
+	"github.com/thoas/go-funk"
 )
+
+var ErrCannotActivateOpenedPage = errors.New("cannot activate latest opened page")
 
 func (b *Bot) CustomizePage() {
 	if b.page == nil {
 		b.page = b.browser.MustPage()
 	}
 
-	w, h := 1280, 728
+	ua := b.userAgent
+	lang := b.acceptLanguage
+
+	if ua != "" || lang != "" {
+		ov := overrideUA(ua, lang)
+		b.page.MustSetUserAgent(ov)
+	}
+
+	w, h := 1280, 768
+	vw, vh := w, 728
+
 	b.page = b.page.MustSetWindow(0, 0, w, h)
+	b.page = b.page.MustSetViewport(vw, vh, 0.0, false)
 }
 
 func (b *Bot) MustOpen(url string, timeouts ...time.Duration) {
@@ -91,4 +107,90 @@ func (b *Bot) MustStable() {
 
 func (b *Bot) MustWaitLoad() {
 	b.page.Timeout(b.mediumToSec).MustWaitLoad().CancelTimeout()
+}
+
+func overrideUA(uaStr string, lang string) *proto.NetworkSetUserAgentOverride {
+	uaOverride := proto.NetworkSetUserAgentOverride{}
+	uaOverride.UserAgent = uaStr
+
+	if lang == "" {
+		lang = "en-CN,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,en-GB;q=0.6,en-US;q=0.5"
+	}
+
+	uaOverride.AcceptLanguage = lang
+
+	return &uaOverride
+}
+
+func (b *Bot) UpdatePage(page *rod.Page) error {
+	b.prevPage, b.page = b.page, page
+	_, err := b.page.Activate()
+
+	return err
+}
+
+func (b *Bot) MustUpdatePage(page *rod.Page) {
+	err := b.UpdatePage(page)
+	b.pie(err)
+}
+
+func (b *Bot) ResetToOriginalPage() error {
+	if b.prevPage != nil && b.page != nil {
+		err := b.page.Close()
+		if err != nil {
+			return fmt.Errorf("cannot reset original page by close page: %w", err)
+		}
+	}
+
+	b.page = b.prevPage
+	return nil
+}
+
+// ActivatePageByURLRegex
+//
+// usage:
+//
+//	if v := regexStr; v != "" {
+//		return c.activatePageByURLRegex(v)
+//	}
+func (b *Bot) ActivatePageByURLRegex(jsRegex string, retry int) error {
+	var page *rod.Page
+
+	for i := 0; i < retry; i++ {
+		page, _ = b.browser.MustPages().FindByURL(jsRegex)
+		if page == nil {
+			RandSleep(1, 1.1) //nolint:gomnd
+			continue
+		}
+
+		break
+	}
+
+	return b.UpdatePage(page)
+}
+
+func (b *Bot) ActivateLatestOpenedPage(pagesBefore rod.Pages, retry int) error {
+	var pageWant *rod.Page
+
+	for i := 0; i < retry; i++ {
+		pagesAfter := b.browser.MustPages()
+		for _, np := range pagesAfter {
+			if !funk.Contains(pagesBefore, np) {
+				pageWant = np
+				break
+			}
+		}
+
+		if pageWant != nil {
+			break
+		}
+
+		RandSleep(1.0, 1.1) //nolint: gomnd
+	}
+
+	if pageWant == nil {
+		return ErrCannotActivateOpenedPage
+	}
+
+	return b.UpdatePage(pageWant)
 }

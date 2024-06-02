@@ -3,6 +3,7 @@ package wee
 import (
 	"time"
 
+	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
@@ -16,6 +17,7 @@ type Bot struct {
 	launcher *launcher.Launcher
 	browser  *rod.Browser
 	page     *rod.Page
+	prevPage *rod.Page
 
 	isLaunched bool
 
@@ -28,8 +30,16 @@ type Bot struct {
 
 	root *rod.Element
 
-	withPage  bool
-	userAgent string
+	withPage bool
+
+	userAgent      string
+	acceptLanguage string
+
+	windowSize []int
+	viewSize   []int
+
+	scrollHeight float64
+	innerHeight  int
 
 	highlightTimes int
 
@@ -66,7 +76,7 @@ func NewBot(options ...BotOption) *Bot {
 	return bot
 }
 
-func NewBotOnlyBindOptions(options ...BotOption) *Bot {
+func NewBotWithOptionsOnly(options ...BotOption) *Bot {
 	bot := &Bot{}
 	bot.Init()
 
@@ -120,6 +130,7 @@ func NewBotUserMode(options ...BotOption) *Bot {
 func (b *Bot) Init() {
 	b.highlightTimes = 1
 	b.SetTimeout()
+	xlog.InitLogDebug()
 }
 
 func (b *Bot) Cleanup() {
@@ -155,6 +166,7 @@ func (b *Bot) pie(err error) {
 	case PanicByLogError:
 		log.Error().Err(err).Msg("error of bot")
 	default:
+		dump.P(err)
 		log.Panic().Err(err).Msg("error of bot")
 	}
 }
@@ -184,6 +196,12 @@ func WithBrowser(brw *rod.Browser) BotOption {
 func WithUserAgent(s string) BotOption {
 	return func(o *Bot) {
 		o.userAgent = s
+	}
+}
+
+func WithAcceptLanguage(s string) BotOption {
+	return func(o *Bot) {
+		o.acceptLanguage = s
 	}
 }
 
