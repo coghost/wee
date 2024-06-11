@@ -20,6 +20,8 @@ type ElemOptions struct {
 	attr    string
 	attrMap map[string]string
 
+	selectorType rod.SelectorType
+
 	timeout float64
 
 	submit    bool
@@ -86,6 +88,12 @@ func WithAttr(s string) ElemOptionFunc {
 func WithAttrMap(m map[string]string) ElemOptionFunc {
 	return func(o *ElemOptions) {
 		o.attrMap = m
+	}
+}
+
+func WithSelectorType(t rod.SelectorType) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.selectorType = t
 	}
 }
 

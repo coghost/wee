@@ -162,7 +162,7 @@ func (b *Bot) elems(selector string, opts ...ElemOptionFunc) ([]*rod.Element, er
 		return []*rod.Element{elem}, nil
 	}
 
-	opt := ElemOptions{timeout: 0}
+	opt := ElemOptions{timeout: NapToSec}
 	bindElemOptions(&opt, opts...)
 
 	if opt.timeout != 0 {
@@ -196,6 +196,26 @@ func (b *Bot) MustAllElemsAttrs(selector string, opts ...ElemOptionFunc) []strin
 	}
 
 	return attrs
+}
+
+func (b *Bot) AllAttrs(selector string, opts ...ElemOptionFunc) ([]string, error) {
+	attrs := []string{}
+
+	elems, err := b.Elems(selector, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, elem := range elems {
+		v, err := b.getElementAttr(elem, opts...)
+		if err != nil {
+			return nil, err
+		}
+
+		attrs = append(attrs, v)
+	}
+
+	return attrs, nil
 }
 
 func (b *Bot) MustElemAttr(selector string, opts ...ElemOptionFunc) string {
@@ -405,4 +425,17 @@ func (b *Bot) IframeElem(iframe, selector string, opts ...ElemOptionFunc) (*rod.
 	opts = append(opts, WithIframe(iframeElem.MustFrame()))
 
 	return b.Elem(selector, opts...)
+}
+
+func (b *Bot) NotNilElem(sel string, opts []ElemOptionFunc) (*rod.Element, error) {
+	elem, err := b.Elem(sel, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	if elem == nil {
+		return nil, ErrCannotFindSelector(sel)
+	}
+
+	return elem, nil
 }

@@ -64,9 +64,10 @@ func (b *Bot) MustScrollToTop() {
 func (b *Bot) ensureScrollHeight() {
 	height, err := b.GetScrollHeight()
 	if err != nil {
-		if b.scrollHeight == 0 {
-			b.pie(err)
-		}
+		// if b.scrollHeight == 0 {
+		// 	b.pie(err)
+		// }
+		b.scrollHeight = 1024
 	} else {
 		b.scrollHeight = height
 	}

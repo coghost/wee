@@ -254,3 +254,19 @@ func StripIllegalChars(name string) string {
 
 	return strutil.Replaces(name, g2u)
 }
+
+func Filenamify(name string) string {
+	g2u := map[string]string{
+		"/":  "_",
+		"\\": "_",
+		"\"": "_",
+		":":  "_",
+		"*":  "_",
+		"?":  "_",
+		"<":  "_",
+		">":  "_",
+		"|":  "_",
+	}
+
+	return strutil.Replaces(name, g2u)
+}

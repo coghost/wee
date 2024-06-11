@@ -19,6 +19,8 @@ type Bot struct {
 	page     *rod.Page
 	prevPage *rod.Page
 
+	noBrowser bool
+
 	isLaunched bool
 
 	userMode bool
@@ -49,6 +51,8 @@ type Bot struct {
 	//
 	panicBy PanicByType
 
+	presetOptions []BotOption
+
 	longToSec   time.Duration
 	mediumToSec time.Duration
 	shortToSec  time.Duration
@@ -61,48 +65,42 @@ func NewBot(options ...BotOption) *Bot {
 
 	bindBotOptions(bot, options...)
 
-	if bot.headless {
-		l, brw := NewBrowser(WithBrowserHeadless(bot.headless))
-		bot.launcher = l
-		bot.browser = brw
-	}
-
-	if bot.withPage {
-		bot.CustomizePage()
-	}
-
-	bot.isLaunched = true
+	checkIfHeadless(bot)
+	bot.CustomizePage()
 
 	return bot
 }
 
 func NewBotWithOptionsOnly(options ...BotOption) *Bot {
-	bot := &Bot{}
-	bot.Init()
+	// bot := &Bot{withPage: false}
+	// bot.Init()
+	// return bot
 
-	bindBotOptions(bot, options...)
-
-	return bot
+	options = append(options, WithPage(false))
+	return NewBot(options...)
 }
 
 // BindBotLanucher launches browser and page for bot.
 func BindBotLanucher(bot *Bot, options ...BotOption) {
 	if bot.isLaunched {
+		log.Debug().Msg("browser is already launched")
 		return
 	}
 
 	l, brw := NewBrowser()
-	options = append(options, WithLauncher(l), WithBrowser(brw))
+	options = append(options, WithLauncher(l), WithBrowser(brw), WithPage(true))
 	bindBotOptions(bot, options...)
 
+	checkIfHeadless(bot)
+	bot.CustomizePage()
+}
+
+func checkIfHeadless(bot *Bot) {
 	if bot.headless {
 		l, brw := NewBrowser(WithBrowserHeadless(bot.headless))
 		bot.launcher = l
 		bot.browser = brw
 	}
-
-	bot.CustomizePage()
-	bot.isLaunched = true
 }
 
 func NewBotDefault(options ...BotOption) *Bot {
@@ -112,7 +110,7 @@ func NewBotDefault(options ...BotOption) *Bot {
 	return NewBot(options...)
 }
 
-func NewBotDebug(options ...BotOption) *Bot {
+func NewBotForDebug(options ...BotOption) *Bot {
 	l, brw := NewBrowser(WithPaintRects(true))
 	options = append(options, WithLauncher(l), WithBrowser(brw))
 

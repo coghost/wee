@@ -9,20 +9,29 @@ import (
 	"path/filepath"
 
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/gookit/goutil/fsutil"
 	"github.com/rs/zerolog/log"
 )
 
-func (b *Bot) DumpCookies() string {
+var cookieFolder = fsutil.Expand("~/tmp/wee_cookies")
+
+func (b *Bot) DumpCookies() (string, error) {
 	filepath, _ := b.uniqueNameByUrl(b.CurrentUrl())
+	fsutil.MkParentDir(filepath)
 
 	content, err := json.Marshal(b.page.MustCookies())
-	b.pie(err)
+	if err != nil {
+		return "", fmt.Errorf("cannot marshal cookies: %w", err)
+	}
 
 	var mode fs.FileMode = 0o644
-	err = os.WriteFile(filepath, content, mode)
-	b.pie(err)
 
-	return filepath
+	err = os.WriteFile(filepath, content, mode)
+	if err != nil {
+		return "", fmt.Errorf("cannot save file: %w", err)
+	}
+
+	return filepath, nil
 }
 
 func (b *Bot) LoadCookies(filepath string) error {
@@ -33,6 +42,10 @@ func (b *Bot) LoadCookies(filepath string) error {
 		}
 
 		filepath = v
+	}
+
+	if !fsutil.FileExist(filepath) {
+		return ErrMissingCookieFile
 	}
 
 	raw, err := os.ReadFile(filepath)
@@ -64,7 +77,6 @@ func (b *Bot) LoadCookies(filepath string) error {
 	}
 
 	err = b.page.SetCookies(nodes)
-
 	if err != nil {
 		log.Error().Err(err).Msg("load cookies failed")
 	}
@@ -83,10 +95,10 @@ func (b *Bot) uniqueNameByUrl(uri string) (string, error) {
 	}
 
 	filename := fmt.Sprintf("%s_%s.cookies", u.Scheme, u.Host)
-	filepath := filepath.Join("/tmp", filename)
+	filepath := filepath.Join(cookieFolder, filename)
 
 	return filepath, nil
 }
 
-func (b *Bot) fromCookieStr() {
+func (b *Bot) FromCookieStr() {
 }

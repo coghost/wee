@@ -71,3 +71,15 @@ func (b *Bot) typeAsHuman(elem *rod.Element, text string, humanized bool) {
 func (b *Bot) TypeCharsOneByOne(elem *rod.Element, value string) {
 	elem.MustKeyActions().Type([]input.Key(fmt.Sprintf("%v", value))...).MustDo()
 }
+
+func (b *Bot) InputSelect(sel, text string, opts ...ElemOptionFunc) error {
+	opt := ElemOptions{selectorType: rod.SelectorTypeText}
+	bindElemOptions(&opt, opts...)
+
+	elem, err := b.NotNilElem(sel, opts)
+	if err != nil {
+		return err
+	}
+
+	return elem.Select([]string{text}, true, opt.selectorType)
+}
