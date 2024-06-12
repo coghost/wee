@@ -29,6 +29,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/elliotchance/pie/v2 v2.8.0 // indirect
 	github.com/fatih/color v1.17.0 // indirect
+	github.com/go-playground/validator/v10 v10.10.1 // indirect
 	github.com/goccy/go-yaml v1.11.3 // indirect
 	github.com/golang-module/carbon/v2 v2.3.12 // indirect
 	github.com/gookit/color v1.5.4 // indirect
@@ -37,7 +38,7 @@ require (
 	github.com/jalaali/go-jalaali v0.0.0-20210801064154-80525e88d958 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
 	github.com/magefile/mage v1.15.0 // indirect
-	github.com/markusmobius/go-dateparser v1.2.1 // indirect
+	github.com/markusmobius/go-dateparser v1.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.15 // indirect
@@ -58,12 +59,13 @@ require (
 	github.com/ysmood/got v0.39.5 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
-	golang.org/x/exp v0.0.0-20240531132922-fd00a4e0eefc // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/term v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

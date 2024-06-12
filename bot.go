@@ -25,10 +25,11 @@ type Bot struct {
 
 	userMode bool
 
-	headless    bool
-	withCookies bool
+	headless bool
 
-	cookieFile string
+	withCookies  bool
+	cookieFolder string
+	cookieFile   string
 
 	root *rod.Element
 
@@ -72,10 +73,6 @@ func NewBot(options ...BotOption) *Bot {
 }
 
 func NewBotWithOptionsOnly(options ...BotOption) *Bot {
-	// bot := &Bot{withPage: false}
-	// bot.Init()
-	// return bot
-
 	options = append(options, WithPage(false))
 	return NewBot(options...)
 }
@@ -169,6 +166,10 @@ func (b *Bot) pie(err error) {
 	}
 }
 
+func (b *Bot) CookieFile() string {
+	return b.cookieFile
+}
+
 /** bot init options **/
 
 type BotOption func(*Bot)
@@ -218,6 +219,12 @@ func WithPage(b bool) BotOption {
 func WithCookies(b bool) BotOption {
 	return func(o *Bot) {
 		o.withCookies = b
+	}
+}
+
+func WithCookieFolder(s string) BotOption {
+	return func(o *Bot) {
+		o.cookieFolder = s
 	}
 }
 

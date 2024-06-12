@@ -95,7 +95,8 @@ func (b *Bot) uniqueNameByUrl(uri string) (string, error) {
 	}
 
 	filename := fmt.Sprintf("%s_%s.cookies", u.Scheme, u.Host)
-	filepath := filepath.Join(cookieFolder, filename)
+	folder := StrAorB(b.cookieFolder, cookieFolder)
+	filepath := filepath.Join(folder, filename)
 
 	return filepath, nil
 }
