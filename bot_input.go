@@ -1,11 +1,19 @@
 package wee
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
 )
+
+var ErrGetTextAfterInput = errors.New("cannot get text after input")
+
+func errGetTextAfterInputError(msg string) error {
+	return fmt.Errorf("%w: %s", ErrGetTextAfterInput, msg)
+}
 
 func (b *Bot) MustInput(sel, text string, opts ...ElemOptionFunc) string {
 	txt, err := b.Input(sel, text, opts...)
@@ -16,30 +24,57 @@ func (b *Bot) MustInput(sel, text string, opts ...ElemOptionFunc) string {
 
 // Input first clear all content, and then input text content.
 func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
-	opt := ElemOptions{submit: false}
+	opt := ElemOptions{submit: false, timeout: PT10Sec, clearBeforeInput: true, endWithEscape: false}
 	bindElemOptions(&opt, opts...)
+
+	// click the input elem to trigger before input
+	_ = b.Click(sel)
 
 	elem, err := b.Elem(sel, opts...)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("cannot get elem: %w", err)
 	}
 
 	if elem == nil {
-		return "", ErrCannotFindSelector(sel + "@@@" + text)
+		return "", ErrCannotFindSelector(sel + SEP + text)
 	}
 
-	// elem = elem.Timeout(time.Second * b.ShortTo).MustSelectAllText().MustInput(text)
-	b.typeAsHuman(elem, text, opt.humanized)
-
-	if opt.submit {
-		RandSleep(0.1, 0.15)
-		if err := elem.MustKeyActions().Press(input.Enter).Do(); err != nil {
-			return "", err
+	if opt.clearBeforeInput {
+		// just a best-effort operation.
+		err := elem.SelectAllText()
+		if err != nil {
+			_ = elem.Input("")
 		}
 	}
 
-	// just try to get text, won't matter if fails
-	return elem.Text()
+	// elem = elem.Timeout(time.Second * b.ShortTo).MustSelectAllText().MustInput(text)
+	if err := b.typeAsHuman(elem, text, opt.humanized); err != nil {
+		return "", fmt.Errorf("cannot input text: %w", err)
+	}
+
+	if opt.endWithEscape {
+		ka, err := elem.KeyActions()
+		if err != nil {
+			return "", err
+		}
+
+		_ = ka.Press(input.Escape).Do()
+	}
+
+	txt, err := elem.Text()
+	if err != nil {
+		return "", errGetTextAfterInputError(fmt.Sprintf("%v", err))
+	}
+
+	if opt.submit {
+		RandSleep(0.1, 0.15) //nolint:mnd
+
+		if err := elem.MustKeyActions().Press(input.Enter).Do(); err != nil {
+			return "", fmt.Errorf("cannot submit after input text: %w", err)
+		}
+	}
+
+	return txt, nil
 }
 
 // typeAsHuman
@@ -47,25 +82,29 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 //	each time before enter (n=args[0] or 5) chars, we wait (to=args[1]/10 or 0.1) seconds
 //
 //	@return *rod.Element
-func (b *Bot) typeAsHuman(elem *rod.Element, text string, humanized bool) {
-	elem.MustSelectAllText().MustInput("")
-
+func (b *Bot) typeAsHuman(elem *rod.Element, text string, humanized bool) error {
 	if !humanized {
-		elem.MustInput(text)
-		return
+		err := elem.Input(text)
+		if err != nil {
+			return fmt.Errorf("cannot input: %w", err)
+		}
+
+		return nil
 	}
 
 	length := 5
-	wait := 0.1
-
 	arr := NewStringSlice(text, length, true)
 
 	for _, str := range arr {
-		err := elem.Input(str)
-		b.pie(err)
+		if err := elem.Timeout(PT10Sec * time.Second).Input(str); err != nil {
+			return err
+		}
 	}
 
-	RandSleep(wait-0.01, wait+0.01)
+	wait := 0.1
+	RandSleep(wait-0.01, wait+0.01) //nolint:mnd
+
+	return nil
 }
 
 func (b *Bot) TypeCharsOneByOne(elem *rod.Element, value string) {
@@ -81,5 +120,9 @@ func (b *Bot) InputSelect(sel, text string, opts ...ElemOptionFunc) error {
 		return err
 	}
 
-	return elem.Select([]string{text}, true, opt.selectorType)
+	if err := elem.Select([]string{text}, true, opt.selectorType); err != nil {
+		return err
+	}
+
+	return elem.Blur()
 }

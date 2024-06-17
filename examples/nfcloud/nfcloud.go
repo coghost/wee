@@ -21,7 +21,7 @@ func main() {
 
 	bot.MustOpen(home)
 
-	whom := bot.MustAnyElem(login, username)
+	whom := bot.MustAnyElem([]string{login, username})
 	if whom == login {
 		wee.Confirm("sign in and continue")
 		bot.DumpCookies()

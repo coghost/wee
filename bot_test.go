@@ -2,11 +2,11 @@ package wee
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/go-rod/rod/lib/proto"
-	"github.com/k0kubun/pp/v3"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/suite"
 	"github.com/ungerik/go-dry"
@@ -57,7 +57,7 @@ func (s *BotSuite) Test_01_cookie() {
 		ckarr = append(ckarr, d)
 	}
 
-	pp.Println(ckarr)
+	fmt.Println(ckarr)
 	err := dry.FileSetJSON("/tmp/001.json", ckarr)
 	s.Nil(err)
 
@@ -66,5 +66,5 @@ func (s *BotSuite) Test_01_cookie() {
 	var cookies []proto.NetworkCookie
 	err = json.Unmarshal(val, &cookies)
 	s.Nil(err)
-	pp.Println(cookies)
+	fmt.Println(cookies)
 }

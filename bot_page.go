@@ -9,6 +9,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/stealth"
+	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
 )
 
@@ -80,7 +81,10 @@ func (b *Bot) MustOpen(uri string) {
 //   - load cookies
 //   - open uri
 func (b *Bot) OpenWithCookies(uri string) error {
-	withCookies := b.cookieFile != "" || b.withCookies
+	withCookies := b.withCookies ||
+		b.cookieFile != "" ||
+		// b.copyAscURLCookieFile != "" ||
+		b.cURLFromClipboard != ""
 
 	// not with cookies, return
 	if !withCookies {
@@ -97,15 +101,21 @@ func (b *Bot) OpenWithCookies(uri string) error {
 		return err
 	}
 
-	if err := b.LoadCookies(b.cookieFile); err != nil {
+	nodes, err := b.LoadCookies(b.cookieFile)
+	if err != nil {
 		return err
+	}
+
+	err = b.page.SetCookies(nodes)
+	if err != nil {
+		log.Error().Err(err).Msg("set cookies failed")
 	}
 
 	return b.Open(uri)
 }
 
 func (b *Bot) Open(url string, timeouts ...time.Duration) error {
-	timeout := FirstOrDefault(b.longToSec, timeouts...)
+	timeout := FirstOrDefault(b.longTimeout, timeouts...)
 
 	if err := b.page.Timeout(timeout).Navigate(url); err != nil {
 		return err
@@ -133,8 +143,17 @@ func (b *Bot) CurrentUrl() string {
 //	@param script `() => console.log("hello world")` or "`(a, b) => a + b`, 1, 2"
 //	@return string
 func (b *Bot) MustEval(script string) string {
-	res := b.page.Timeout(b.mediumToSec).MustEval(script).String()
+	res := b.page.Timeout(b.mediumTimeout).MustEval(script).String()
 	return res
+}
+
+func (b *Bot) Eval(script string) (*proto.RuntimeRemoteObject, error) {
+	obj, err := b.page.Timeout(b.mediumTimeout).Eval(script)
+	if err != nil {
+		return nil, err
+	}
+
+	return obj, nil
 }
 
 // URLContains uses `decodeURIComponent(window.location.href).includes` to check if url has str or not
@@ -154,11 +173,11 @@ func (b *Bot) PageSource() string {
 }
 
 func (b *Bot) MustStable() {
-	b.page.Timeout(b.mediumToSec).MustWaitStable().CancelTimeout()
+	b.page.Timeout(b.mediumTimeout).MustWaitStable().CancelTimeout()
 }
 
 func (b *Bot) MustWaitLoad() {
-	b.page.Timeout(b.mediumToSec).MustWaitLoad().CancelTimeout()
+	b.page.Timeout(b.mediumTimeout).MustWaitLoad().CancelTimeout()
 }
 
 func overrideUA(uaStr string, lang string) *proto.NetworkSetUserAgentOverride {

@@ -27,6 +27,9 @@ type ElemOptions struct {
 	submit    bool
 	humanized bool
 
+	clearBeforeInput bool
+	endWithEscape    bool
+
 	waitStable bool
 
 	clickByScript    bool
@@ -100,6 +103,18 @@ func WithSelectorType(t rod.SelectorType) ElemOptionFunc {
 func WithSubmit(b bool) ElemOptionFunc {
 	return func(o *ElemOptions) {
 		o.submit = b
+	}
+}
+
+func ClearBeforeInput(b bool) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.clearBeforeInput = b
+	}
+}
+
+func EndWithEscape(b bool) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.endWithEscape = b
 	}
 }
 
