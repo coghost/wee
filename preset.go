@@ -11,7 +11,7 @@ const (
 	// NapToSec a nap timeout in second
 	NapToSec = 2
 	// ShortToSec short timeout in second
-	ShortToSec = 5
+	ShortToSec = 10
 	// MediumToSec medium timeout in second
 	MediumToSec = 20
 	// LongToSec long timeout in second
@@ -19,6 +19,7 @@ const (
 )
 
 const (
+	PT10Sec = 10
 	// PT10MilliSec a very short timeout in millisecond
 	PT10MilliSec = 0.01
 )

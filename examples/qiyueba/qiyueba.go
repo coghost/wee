@@ -35,7 +35,7 @@ func main() {
 
 	bot.MustOpen(home)
 
-	got := bot.MustAnyElem(login, username)
+	got := bot.MustAnyElem([]string{login, username})
 
 	if got == username {
 		name := bot.MustElemAttr(username)

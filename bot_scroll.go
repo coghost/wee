@@ -162,13 +162,13 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 }
 
 func (b *Bot) GetWindowInnerHeight() float64 {
-	h := b.page.Timeout(b.shortToSec).MustEval(`() => window.innerHeight`).Int()
+	h := b.page.Timeout(b.shortTimeout).MustEval(`() => window.innerHeight`).Int()
 	// h := b.page.MustGetWindow().Height
 	return float64(h)
 }
 
 func (b *Bot) GetScrollHeight() (float64, error) {
-	res, err := b.page.Timeout(b.shortToSec).Eval(`() => document.body.scrollHeight`)
+	res, err := b.page.Timeout(b.shortTimeout).Eval(`() => document.body.scrollHeight`)
 	if err != nil {
 		return 0, err
 	}

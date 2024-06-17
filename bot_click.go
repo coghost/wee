@@ -65,7 +65,7 @@ func (b *Bot) ClickElem(elem *rod.Element, opts ...ElemOptionFunc) error {
 		return err
 	}
 
-	err = elem.Timeout(b.shortToSec).Click(proto.InputMouseButtonLeft, 1)
+	err = elem.Timeout(b.shortTimeout).Click(proto.InputMouseButtonLeft, 1)
 	if err == nil {
 		return nil
 	}
@@ -117,7 +117,7 @@ func (b *Bot) PressEscape(elem *rod.Element) error {
 }
 
 func (b *Bot) Press(elem *rod.Element, keys ...input.Key) error {
-	return elem.Timeout(b.shortToSec).MustKeyActions().Press(keys...).Do()
+	return elem.Timeout(b.shortTimeout).MustKeyActions().Press(keys...).Do()
 }
 
 func (b *Bot) ClickWithScript(selector string, opts ...ElemOptionFunc) error {
@@ -130,7 +130,6 @@ func (b *Bot) ClickWithScript(selector string, opts ...ElemOptionFunc) error {
 }
 
 func (b *Bot) ClickElemWithScript(elem *rod.Element, opts ...ElemOptionFunc) error {
-	log.Trace().Msg("start click elem with script")
 	opt := ElemOptions{timeout: MediumToSec, highlight: true}
 	bindElemOptions(&opt, opts...)
 
@@ -203,7 +202,6 @@ func (b *Bot) ClosePopover(sel string) (int, error) {
 	}
 
 	for _, elem := range elems {
-		log.Trace().Str("popover", sel).Msg("try close")
 		if _, err := elem.Interactable(); err != nil {
 			// elem.Overlay("popover is not interactable")
 			return 0, err

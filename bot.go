@@ -8,18 +8,18 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/gookit/goutil/dump"
+	"github.com/gookit/goutil/strutil"
 	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 )
 
 type Bot struct {
+	UniqueID string
 	// init behaviours
 	launcher *launcher.Launcher
 	browser  *rod.Browser
 	page     *rod.Page
 	prevPage *rod.Page
-
-	noBrowser bool
 
 	isLaunched bool
 
@@ -30,10 +30,15 @@ type Bot struct {
 	withCookies  bool
 	cookieFolder string
 	cookieFile   string
+	// cURLFromClipboard
+	cURLFromClipboard string
+
+	extensions []string
 
 	root *rod.Element
 
-	withPage bool
+	withPage  bool
+	incognito bool
 
 	userAgent      string
 	acceptLanguage string
@@ -54,10 +59,11 @@ type Bot struct {
 
 	presetOptions []BotOption
 
-	longToSec   time.Duration
-	mediumToSec time.Duration
-	shortToSec  time.Duration
-	napToSec    time.Duration
+	longTimeout   time.Duration
+	mediumTimeout time.Duration
+	shortTimeout  time.Duration
+	napTimeout    time.Duration
+	pt10s         time.Duration
 }
 
 func NewBot(options ...BotOption) *Bot {
@@ -125,12 +131,20 @@ func NewBotUserMode(options ...BotOption) *Bot {
 func (b *Bot) Init() {
 	b.highlightTimes = 1
 	b.SetTimeout()
+	b.UniqueID = strutil.RandomCharsV3(16) //nolint:mnd
 	xlog.InitLogDebug()
+}
+
+func (b *Bot) BlockInCleanUp() {
+	defer b.Cleanup()
+	defer Blocked()
 }
 
 func (b *Bot) Cleanup() {
 	if b.userMode {
+		// b.page.Close()
 		log.Debug().Msg("in user mode, no clean up")
+
 		return
 	}
 
@@ -139,10 +153,11 @@ func (b *Bot) Cleanup() {
 }
 
 func (b *Bot) SetTimeout() {
-	b.longToSec = LongToSec * time.Second
-	b.mediumToSec = MediumToSec * time.Second
-	b.shortToSec = ShortToSec * time.Second
-	b.napToSec = NapToSec * time.Second
+	b.longTimeout = LongToSec * time.Second
+	b.mediumTimeout = MediumToSec * time.Second
+	b.shortTimeout = ShortToSec * time.Second
+	b.napTimeout = NapToSec * time.Second
+	b.pt10s = PT10Sec * time.Second
 }
 
 func (b *Bot) SetPanicWith(panicWith PanicByType) {
@@ -216,21 +231,38 @@ func WithPage(b bool) BotOption {
 	}
 }
 
+// WithCookies will automatically load cookies from current dir for "cookies/xxx".
 func WithCookies(b bool) BotOption {
 	return func(o *Bot) {
 		o.withCookies = b
 	}
 }
 
+// WithCookieFolder will load cookies from folder passed in.
 func WithCookieFolder(s string) BotOption {
 	return func(o *Bot) {
 		o.cookieFolder = s
 	}
 }
 
+// WithCookieFile uses the cookie file specified,
+// cookie file should be json array.
 func WithCookieFile(s string) BotOption {
 	return func(o *Bot) {
 		o.cookieFile = s
+	}
+}
+
+// WithCURLFromClipboard reads the raw content `Copy as cURL` from clipboard
+func WithCURLFromClipboard(s string) BotOption {
+	return func(o *Bot) {
+		o.cURLFromClipboard = s
+	}
+}
+
+func WithExtensionFolder(arr []string) BotOption {
+	return func(o *Bot) {
+		o.extensions = arr
 	}
 }
 

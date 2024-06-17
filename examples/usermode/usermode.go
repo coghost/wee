@@ -25,7 +25,7 @@ func main() {
 
 	bot.MustInput(input, "python", wee.WithSubmit(true))
 
-	sel := bot.MustAnyElem(results, noResults)
+	sel := bot.MustAnyElem([]string{results, noResults})
 
 	if sel == noResults {
 		log.Warn().Msg("no results found")

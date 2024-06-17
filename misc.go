@@ -2,19 +2,14 @@ package wee
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/fs"
 	"math"
 	"math/rand"
-	"os"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/gookit/goutil/strutil"
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cast"
 )
 
@@ -22,7 +17,7 @@ import (
 //
 // return the first args value, if args not empty
 // else return default value
-func FirstOrDefault[T any](dft T, args ...T) T { //nolint: ireturn
+func FirstOrDefault[T any](dft T, args ...T) T { //nolint:ireturn
 	val := dft
 	if len(args) > 0 {
 		val = args[0]
@@ -39,16 +34,6 @@ func RandFloatX1k(min, max float64) int {
 	x1k := minI + rand.Intn(maxI-minI)
 
 	return x1k
-}
-
-// RandSleep random sleep some seconds
-//
-// @returns milliseconds
-func RandSleep(min, max float64, msg ...string) int {
-	slept := RandFloatX1k(min, max)
-	time.Sleep(time.Duration(slept) * time.Millisecond)
-
-	return slept
 }
 
 // NewStringSlice
@@ -70,6 +55,7 @@ func NewStringSlice(raw string, fixStep int, randomStep ...bool) []string {
 
 	isRandStep := FirstOrDefault(false, randomStep...)
 
+	//nolint:mnd
 	for _, ch := range raw {
 		perStr += string(ch)
 		if len(perStr) >= step {
@@ -118,75 +104,6 @@ func refineIndex(count, index int) int {
 	return index
 }
 
-// NewChromeExtension will create two files from line, and save to savePath
-//   - background.js
-//   - manifest.json
-//
-// line format is: "host:port:username:password:<OTHER>"
-func NewChromeExtension(line, savePath string) (string, string, string) {
-	proxy_js := `var config = {
-  mode: 'fixed_servers',
-  rules: {
-    singleProxy: {
-      scheme: 'http',
-      host: '%s',
-      port: parseInt(%s),
-    },
-    bypassList: ['foobar.com'],
-  },
-}
-chrome.proxy.settings.set({ value: config, scope: 'regular' }, function () {})
-function callbackFn(details) {
-  return {
-    authCredentials: {
-      username: '%s',
-      password: '%s',
-    },
-  }
-}
-chrome.webRequest.onAuthRequired.addListener(callbackFn, { urls: ['<all_urls>'] }, ['blocking'])`
-	manifest := `{
-    "version": "1.0.0",
-    "manifest_version": 2,
-    "name": "GoccProxy",
-    "permissions": ["proxy", "tabs", "unlimitedStorage", "storage", "<all_urls>", "webRequest", "webRequestBlocking"],
-    "background": {
-        "scripts": ["background.js"]
-    },
-    "minimum_chrome_version": "22.0.0"
-}`
-	arr := strings.Split(line, ":")
-	proxy_js = fmt.Sprintf(proxy_js, arr[0], arr[1], arr[2], arr[3])
-
-	ipAddr := arr[0]
-
-	if strings.Contains(arr[0], "superproxy") {
-		ipArr := strings.Split(arr[2], "-")
-		ipAddr = ipArr[len(ipArr)-1]
-	}
-
-	ipAddr = strings.ReplaceAll(ipAddr, ".", "_")
-
-	baseDir := filepath.Join(savePath, ipAddr)
-
-	bg := filepath.Join(baseDir, "background.js")
-	mf := filepath.Join(baseDir, "manifest.json")
-
-	MustWriteFile(bg, []byte(proxy_js))
-	MustWriteFile(mf, []byte(manifest))
-
-	return baseDir, bg, mf
-}
-
-func MustWriteFile(filepath string, content []byte) {
-	var mode fs.FileMode = 0o644
-
-	err := os.WriteFile(filepath, content, mode)
-	if err != nil {
-		log.Fatal().Err(err).Msg("cannot write to file")
-	}
-}
-
 // Stringify returns a string representation
 func Stringify(data interface{}) (string, error) {
 	b, err := json.Marshal(data)
@@ -233,6 +150,14 @@ func IsZeroVal(x interface{}) bool {
 // StrAorB returns the first non empty string.
 func StrAorB(a, b string) string {
 	if a != "" {
+		return a
+	}
+
+	return b
+}
+
+func IntAorB(a, b int) int {
+	if a != 0 {
 		return a
 	}
 

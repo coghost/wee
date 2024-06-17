@@ -75,12 +75,12 @@ func (b *Bot) Highlight(elem *rod.Element, show, hide float64, style string, cou
 
 func (b *Bot) MarkElems(timeout time.Duration, elems ...*rod.Element) {
 	style := `box-shadow: 0px 0px 0px 3px rgba(148,0,211,1);`
-	for _, e := range elems {
-		go b.MarkElem(e, timeout, style)
+	for _, elem := range elems {
+		go b.MarkElem(timeout, elem, style)
 	}
 }
 
-func (b *Bot) MarkElem(elem *rod.Element, timeout time.Duration, style string) {
+func (b *Bot) MarkElem(timeout time.Duration, elem *rod.Element, style string) {
 	origStyle := ""
 
 	// ob, err := elem.Eval(`e => {return this.getAttribute("style")}`)
@@ -90,7 +90,7 @@ func (b *Bot) MarkElem(elem *rod.Element, timeout time.Duration, style string) {
 
 	defer func() {
 		script := fmt.Sprintf(`() => this.setAttribute("style", "%s");`, origStyle)
-		elem.Eval(script)
+		_, _ = elem.Eval(script)
 	}()
 
 	if style == "" {
@@ -98,7 +98,7 @@ func (b *Bot) MarkElem(elem *rod.Element, timeout time.Duration, style string) {
 	}
 
 	script := fmt.Sprintf(`() => this.setAttribute("style", "%s");`, style)
-	elem.Eval(script)
+	_, _ = elem.Eval(script)
 
 	time.Sleep(timeout)
 }

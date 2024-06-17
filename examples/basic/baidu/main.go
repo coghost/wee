@@ -1,10 +1,3 @@
-# wee
-
-Wee is based on go-rod, and provides clean interface to write crawler.
-
-## Examples
-
-```go
 package main
 
 import (
@@ -43,16 +36,3 @@ func main() {
 		fmt.Printf("%s - %s\n", elem.MustText(), *elem.MustAttribute("href"))
 	}
 }
-```
-
-See [examples folder](https://github.com/coghost/wee/tree/main/examples) for more detailed examples.
-
-## Issues
-
-### panic: context canceled
-
-context canceled issue usually happend when elem is bound with Timeout on `bot.Elem(xxx)`, you can use
-
-```go
-elem.CancelTimeout().Timeout(xxx) to rewrite previous value.
-```

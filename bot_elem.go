@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/coghost/xpretty"
 	"github.com/go-rod/rod"
 	"github.com/rs/zerolog/log"
@@ -354,9 +355,9 @@ func (b *Bot) mustNotByText(selector string) {
 	}
 }
 
-func (b *Bot) MustAnyElem(selectors ...string) string {
+func (b *Bot) MustAnyElem(selectors []string, opts ...ElemOptionFunc) string {
 	start := time.Now()
-	s, err := b.AnyElem(selectors...)
+	s, err := b.AnyElem(selectors, opts...)
 	b.pie(err)
 
 	cost := time.Since(start).Seconds()
@@ -367,8 +368,8 @@ func (b *Bot) MustAnyElem(selectors ...string) string {
 	return s
 }
 
-func (b *Bot) AnyElem(selectors ...string) (string, error) {
-	return b.AnyElemWithTimeout(selectors)
+func (b *Bot) AnyElem(selectors []string, opts ...ElemOptionFunc) (string, error) {
+	return b.AnyElemWithTimeout(selectors, opts...)
 }
 
 func (b *Bot) AnyElemWithTimeout(selectors []string, opts ...ElemOptionFunc) (string, error) {
@@ -380,16 +381,24 @@ func (b *Bot) AnyElemWithTimeout(selectors []string, opts ...ElemOptionFunc) (st
 		err error
 	)
 
-	err = rod.Try(func() {
-		r := b.page.Timeout(time.Duration(opt.timeout) * time.Second).Race()
-		for _, s := range selectors {
-			b.appendToRace(s, &sel, r)
-		}
+	err = retry.Do(
+		func() error {
+			// err = rod.Try(func() {
+			race := b.page.Timeout(time.Duration(opt.timeout) * time.Second).Race()
+			for _, s := range selectors {
+				b.appendToRace(s, &sel, race)
+			}
 
-		r.MustDo()
-	})
+			_, err = race.Do()
+
+			return err
+		},
+		retry.Attempts(3),
+	)
 
 	return sel, err
+	// })
+	// return sel, err
 }
 
 // appendToRace:

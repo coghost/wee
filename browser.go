@@ -23,14 +23,24 @@ func NewUserMode() (*launcher.Launcher, *rod.Browser) {
 
 func NewBrowser(opts ...BrowserOptionFunc) (*launcher.Launcher, *rod.Browser) {
 	delay := 500
-	opt := BrowserOptions{slowDelay: delay}
+	opt := BrowserOptions{slowDelay: delay, noDefaultDevice: true}
 	bindBrowserOptions(&opt, opts...)
 
-	l := NewLauncher(opts...)
-	brw := rod.New().ControlURL(l.MustLaunch()).MustConnect()
+	lnchr := NewLauncher(opts...)
+
+	for _, extFolder := range opt.extensions {
+		// only support unpacked extension
+		lnchr.Set("load-extension", extFolder)
+	}
+
+	brw := rod.New().ControlURL(lnchr.MustLaunch()).MustConnect()
+	if opt.noDefaultDevice {
+		brw.NoDefaultDevice()
+	}
+
 	brw.SlowMotion(time.Millisecond * time.Duration(opt.slowDelay))
 
-	return l, brw
+	return lnchr, brw
 }
 
 func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
@@ -60,7 +70,7 @@ func newUserModeLauncher() (*launcher.Launcher, string) {
 	if err != nil {
 		s := fmt.Sprintf("%s", err)
 		if strings.Contains(s, "[launcher] Failed to get the debug url: Opening in existing browser session") {
-			fmt.Printf("%[1]s\nlaunch chrome browser failed, please make sure it is closed, and then run again\n%[1]s\n", strings.Repeat("=", 32)) // nolint
+			fmt.Printf("%[1]s\nlaunch chrome browser failed, please make sure it is closed, and then run again\n%[1]s\n", strings.Repeat("=", 32)) //nolint
 		}
 
 		log.Fatal().Err(err).Msg("cannot launch browser")
@@ -76,16 +86,16 @@ func setLauncher(client *launcher.Launcher, headless bool) {
 		Set("no-first-run").
 		Set("no-startup-window").
 		Set("disable-blink-features", "AutomationControlled").
-		Set("disable-gpu").
+		// Set("disable-gpu").
 		Set("disable-dev-shm-usage").
-		Set("disable-web-security").
+		// Set("disable-web-security").
 		Set("disable-infobars").
 		Set("enable-automation").
 		Headless(headless)
 }
 
-func loadProxyExtension(l *launcher.Launcher, proxyLine string) {
-	extensionFolder, _, _ := NewChromeExtension(proxyLine, "/tmp")
-	l.Set("load-extension", extensionFolder)
-	log.Info().Str("extension_folder", extensionFolder).Msg("load proxy extension")
-}
+// func loadProxyExtension(l *launcher.Launcher, proxyLine string) {
+// 	extensionFolder, _ := NewChromeExtension(proxyLine, "/tmp")
+// 	l.Set("load-extension", extensionFolder)
+// 	log.Info().Str("extension_folder", extensionFolder).Msg("load proxy extension")
+// }

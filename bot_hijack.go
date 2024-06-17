@@ -11,7 +11,7 @@ import (
 type HijackHandler func(*rod.Hijack)
 
 // HijackAny
-func (b *Bot) HijackAny(resources []string, terminate bool, handler HijackHandler) {
+func (b *Bot) HijackAny(resources []string, handler HijackHandler, continueRequest bool) {
 	if len(resources) == 0 {
 		return
 	}
@@ -23,7 +23,7 @@ func (b *Bot) HijackAny(resources []string, terminate bool, handler HijackHandle
 			if strings.Contains(ctx.Request.URL().String(), res) {
 				handler(ctx)
 
-				if terminate {
+				if continueRequest {
 					return
 				}
 			}
@@ -47,7 +47,7 @@ func (b *Bot) Hijack(patterns []string, networkResourceType proto.NetworkResourc
 			if ctx.Request.Type() == networkResourceType {
 				handler(ctx)
 
-				if continueRequest {
+				if !continueRequest {
 					return
 				}
 			}

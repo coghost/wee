@@ -7,6 +7,10 @@ type BrowserOptions struct {
 	paintRects bool
 	headless   bool
 	flags      []string
+
+	extensions []string
+
+	noDefaultDevice bool
 }
 
 type BrowserOptionFunc func(o *BrowserOptions)
@@ -39,5 +43,17 @@ func WithFlags(arr ...string) BrowserOptionFunc {
 func WithBrowserHeadless(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.headless = b
+	}
+}
+
+func NoDefaultDevice(b bool) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.noDefaultDevice = b
+	}
+}
+
+func WithExtensions(extArr []string) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.extensions = extArr
 	}
 }

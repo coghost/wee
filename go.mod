@@ -3,13 +3,17 @@ module github.com/coghost/wee
 go 1.22.3
 
 require (
+	github.com/alexflint/go-arg v1.5.0
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/coghost/xdtm v0.1.2-20240109
-	github.com/coghost/xlog v0.0.0-20240109083303-d6087ce64d04
+	github.com/coghost/xlog v0.1.0
 	github.com/coghost/xpretty v0.0.0-20240109082848-b154112aa0aa
+	github.com/coghost/zlog v0.1.0
 	github.com/go-rod/rod v0.116.0
 	github.com/go-rod/stealth v0.4.9
 	github.com/gookit/goutil v0.6.15
 	github.com/k0kubun/pp/v3 v3.2.0
+	github.com/mattn/go-shellwords v1.0.12
 	github.com/pterm/pterm v0.12.79
 	github.com/rs/zerolog v1.33.0
 	github.com/samber/lo v1.39.0
@@ -17,6 +21,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/thoas/go-funk v0.9.3
 	github.com/ungerik/go-dry v0.0.0-20231011182423-d9a07fd18c5f
+	go.uber.org/zap v1.27.0
 )
 
 require (
@@ -25,6 +30,7 @@ require (
 	atomicgo.dev/schedule v0.1.0 // indirect
 	github.com/AlekSi/pointer v1.2.0 // indirect
 	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
+	github.com/alexflint/go-scalar v1.2.0 // indirect
 	github.com/containerd/console v1.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/elliotchance/pie/v2 v2.8.0 // indirect
@@ -56,9 +62,10 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/ysmood/fetchup v0.2.4 // indirect
 	github.com/ysmood/goob v0.4.0 // indirect
-	github.com/ysmood/got v0.39.5 // indirect
+	github.com/ysmood/got v0.40.0 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
+	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
 	golang.org/x/sys v0.21.0 // indirect
