@@ -19,7 +19,7 @@ var (
 )
 
 func (b *Bot) CustomizePage() {
-	if !b.withPage {
+	if !b.withPageCreation {
 		return
 	}
 
@@ -28,7 +28,11 @@ func (b *Bot) CustomizePage() {
 	}
 
 	if b.page == nil {
-		b.page = b.browser.MustPage()
+		if b.stealthMode && !b.userMode {
+			b.page = stealth.MustPage(b.browser)
+		} else {
+			b.page = b.browser.MustPage()
+		}
 	}
 
 	ua := b.userAgent
@@ -51,13 +55,15 @@ func (b *Bot) CustomizePage() {
 		panic(err)
 	}
 
-	b.page.SetViewport(nil)
+	_ = b.page.SetViewport(nil)
 
 	b.isLaunched = true
 }
 
 func (b *Bot) MiscellanyBackup() error {
-	b.browser.IgnoreCertErrors(true)
+	if err := b.browser.IgnoreCertErrors(true); err != nil {
+		return err
+	}
 
 	pg, err := stealth.Page(b.browser)
 	if err != nil {
@@ -80,7 +86,7 @@ func (b *Bot) MustOpen(uri string) {
 //   - open it's domain `https://xxx.com`
 //   - load cookies
 //   - open uri
-func (b *Bot) OpenWithCookies(uri string) error {
+func (b *Bot) OpenWithCookies(uri string, timeouts ...time.Duration) error {
 	withCookies := b.withCookies ||
 		b.cookieFile != "" ||
 		// b.copyAscURLCookieFile != "" ||
@@ -102,13 +108,11 @@ func (b *Bot) OpenWithCookies(uri string) error {
 	}
 
 	nodes, err := b.LoadCookies(b.cookieFile)
-	if err != nil {
-		return err
-	}
-
-	err = b.page.SetCookies(nodes)
-	if err != nil {
-		log.Error().Err(err).Msg("set cookies failed")
+	if err == nil {
+		err = b.page.SetCookies(nodes)
+		if err != nil {
+			log.Error().Err(err).Msg("set cookies failed")
+		}
 	}
 
 	return b.Open(uri)
@@ -132,7 +136,7 @@ func (b *Bot) Browser() *rod.Browser {
 	return b.browser
 }
 
-func (b *Bot) CurrentUrl() string {
+func (b *Bot) CurrentURL() string {
 	return b.page.MustInfo().URL
 }
 
@@ -231,7 +235,7 @@ func (b *Bot) ActivatePageByURLRegex(jsRegex string, retry int) error {
 	for i := 0; i < retry; i++ {
 		page, _ = b.browser.MustPages().FindByURL(jsRegex)
 		if page == nil {
-			RandSleep(1, 1.1) //nolint:gomnd
+			SleepN(1.0)
 			continue
 		}
 
@@ -257,7 +261,7 @@ func (b *Bot) ActivateLatestOpenedPage(pagesBefore rod.Pages, retry int) error {
 			break
 		}
 
-		RandSleep(1.0, 1.1) //nolint: gomnd
+		SleepN(1.0)
 	}
 
 	if pageWant == nil {

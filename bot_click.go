@@ -137,7 +137,7 @@ func (b *Bot) ClickElemWithScript(elem *rod.Element, opts ...ElemOptionFunc) err
 		b.FocusAndHighlight(elem)
 	}
 
-	_, err := elem.CancelTimeout().Timeout(time.Duration(opt.timeout)*time.Second).Eval(`(elem) => { this.click() }`, elem)
+	_, err := elem.Timeout(time.Duration(opt.timeout)*time.Second).CancelTimeout().Eval(`(elem) => { this.click() }`, elem)
 	if err != nil {
 		log.Error().Err(err).Msg("Err: close by Eval script this.click()")
 		return err
@@ -223,7 +223,7 @@ func (b *Bot) ClosePopover(sel string) (int, error) {
 func (b *Bot) MustClickOneByOne(selectors ...string) {
 	for _, sel := range selectors {
 		b.MustClick(sel)
-		RandSleep(0.5, 0.6)
+		SleepPT500Ms()
 	}
 
 	b.MustStable()

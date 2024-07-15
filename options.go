@@ -23,10 +23,12 @@ type ElemOptions struct {
 	selectorType rod.SelectorType
 
 	timeout float64
+	retries uint
 
 	submit    bool
 	humanized bool
 
+	trigger          bool
 	clearBeforeInput bool
 	endWithEscape    bool
 
@@ -76,6 +78,12 @@ func WithTimeout(t float64) ElemOptionFunc {
 	}
 }
 
+func WithRetries(i uint) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.retries = i
+	}
+}
+
 func WithIndex(i int) ElemOptionFunc {
 	return func(o *ElemOptions) {
 		o.index = i
@@ -103,6 +111,12 @@ func WithSelectorType(t rod.SelectorType) ElemOptionFunc {
 func WithSubmit(b bool) ElemOptionFunc {
 	return func(o *ElemOptions) {
 		o.submit = b
+	}
+}
+
+func Trigger(b bool) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.trigger = b
 	}
 }
 

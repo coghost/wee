@@ -24,7 +24,7 @@ func (b *Bot) MustInput(sel, text string, opts ...ElemOptionFunc) string {
 
 // Input first clear all content, and then input text content.
 func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
-	opt := ElemOptions{submit: false, timeout: PT10Sec, clearBeforeInput: true, endWithEscape: false}
+	opt := ElemOptions{submit: false, timeout: PT10Sec, clearBeforeInput: true, endWithEscape: false, humanized: b.humanized}
 	bindElemOptions(&opt, opts...)
 
 	// click the input elem to trigger before input
@@ -47,6 +47,10 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 		}
 	}
 
+	if opt.trigger {
+		_ = b.ClickElem(elem)
+	}
+
 	// elem = elem.Timeout(time.Second * b.ShortTo).MustSelectAllText().MustInput(text)
 	if err := b.typeAsHuman(elem, text, opt.humanized); err != nil {
 		return "", fmt.Errorf("cannot input text: %w", err)
@@ -67,7 +71,7 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 	}
 
 	if opt.submit {
-		RandSleep(0.1, 0.15) //nolint:mnd
+		SleepPT100Ms()
 
 		if err := elem.MustKeyActions().Press(input.Enter).Do(); err != nil {
 			return "", fmt.Errorf("cannot submit after input text: %w", err)

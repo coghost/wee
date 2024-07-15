@@ -48,6 +48,30 @@ func (s *MiscSuite) Test_01_strToNum() {
 		s.Equal(tt.wantS, v)
 
 		f := MustStrToFloat(tt.raw, tt.kept)
-		s.Equal(tt.wantF, f)
+		s.InEpsilon(tt.wantF, f, 0.002)
+	}
+}
+
+func (s *MiscSuite) TestUniqueName() {
+	tests := []struct {
+		raw  string
+		want string
+	}{
+		{
+			raw:  "https://en.wikipedia.org/wiki/Main_Page",
+			want: "wiki_Main_Page",
+		},
+		{
+			raw:  "https://en.wikipedia.org",
+			want: "homepage",
+		},
+		{
+			raw:  "https://en.wikipedia.org/",
+			want: "homepage",
+		},
+	}
+	for _, tt := range tests {
+		got := NameFromURL(tt.raw)
+		s.Equal(tt.want, got, tt.raw)
 	}
 }

@@ -38,6 +38,10 @@ func NewBrowser(opts ...BrowserOptionFunc) (*launcher.Launcher, *rod.Browser) {
 		brw.NoDefaultDevice()
 	}
 
+	if opt.incognito {
+		brw.MustIncognito()
+	}
+
 	brw.SlowMotion(time.Millisecond * time.Duration(opt.slowDelay))
 
 	return lnchr, brw

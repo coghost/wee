@@ -22,7 +22,7 @@ func (b *Bot) DumpCookies() (string, error) {
 	cookieFile := b.cookieFile
 
 	if cookieFile == "" {
-		file, err := b.uniqueNameByURL(b.CurrentUrl())
+		file, err := b.uniqueNameByURL(b.CurrentURL())
 		if err != nil {
 			return "", err
 		}
@@ -55,7 +55,7 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 	}
 
 	if filepath == "" {
-		v, err := b.uniqueNameByURL(b.CurrentUrl())
+		v, err := b.uniqueNameByURL(b.CurrentURL())
 		if err != nil {
 			return nil, err
 		}
@@ -90,11 +90,13 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 	}
 
 	var nodes []*proto.NetworkCookieParam
+
 	for _, cookie := range cookies {
+		port := &cookie.SourcePort
 		nodes = append(nodes, &proto.NetworkCookieParam{
 			Name:         cookie.Name,
 			Value:        cookie.Value,
-			URL:          b.CurrentUrl(),
+			URL:          b.CurrentURL(),
 			Domain:       cookie.Domain,
 			Path:         cookie.Path,
 			Secure:       cookie.Secure,
@@ -104,7 +106,7 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 			Priority:     cookie.Priority,
 			SameParty:    cookie.SameParty,
 			SourceScheme: cookie.SourceScheme,
-			SourcePort:   &cookie.SourcePort,
+			SourcePort:   port,
 		})
 	}
 
@@ -113,7 +115,7 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 
 func (b *Bot) uniqueNameByURL(uri string) (string, error) {
 	if uri == "" {
-		uri = b.CurrentUrl()
+		uri = b.CurrentURL()
 	}
 
 	u, err := url.Parse(uri)

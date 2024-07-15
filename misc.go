@@ -2,8 +2,11 @@ package wee
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/rand"
+	"net/url"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -11,6 +14,7 @@ import (
 
 	"github.com/gookit/goutil/strutil"
 	"github.com/spf13/cast"
+	"github.com/ungerik/go-dry"
 )
 
 // FirstOrDefault
@@ -29,6 +33,9 @@ func FirstOrDefault[T any](dft T, args ...T) T { //nolint:ireturn
 // RandFloatX1k returns a value between (min, max) * 1000
 func RandFloatX1k(min, max float64) int {
 	secToMill := 1000.0
+	if min == max {
+		return int(secToMill * min)
+	}
 
 	minI, maxI := int(math.Round(min*secToMill)), int(math.Round(max*secToMill))
 	x1k := minI + rand.Intn(maxI-minI)
@@ -115,12 +122,12 @@ func Stringify(data interface{}) (string, error) {
 }
 
 func MustStringify(data interface{}) string {
-	b, err := Stringify(data)
+	raw, err := Stringify(data)
 	if err != nil {
 		panic(err)
 	}
 
-	return string(b)
+	return raw
 }
 
 func MustStrToFloat(raw string, keptChars string) float64 {
@@ -194,4 +201,43 @@ func Filenamify(name string) string {
 	}
 
 	return strutil.Replaces(name, g2u)
+}
+
+// NameFromURL gets a name from url without domain
+//
+//	i.e. https://en.wikipedia.org/wiki/Main_Page ==> wiki_Main_Page
+func NameFromURL(uri string) string {
+	parsed, err := url.Parse(uri)
+	if err != nil {
+		return uri
+	}
+
+	name := uri
+	name = strings.TrimPrefix(name, "/")
+	name = strings.TrimSuffix(name, "/")
+
+	homepage := fmt.Sprintf("%s://%s", parsed.Scheme, parsed.Host)
+	name = strings.ReplaceAll(name, homepage, "")
+
+	if name == "" {
+		return "homepage"
+	}
+
+	name = strings.TrimPrefix(name, "/")
+	name = strings.TrimSuffix(name, "/")
+
+	if name == "" {
+		name = "homepage"
+	}
+
+	return Filenamify(name)
+}
+
+// fixtureFile serves fixtureFile/xxx as `file:///xxx`
+func fixtureFile(path string) string {
+	slash := filepath.FromSlash
+	f, err := filepath.Abs(slash("fixtures/" + path))
+	dry.PanicIfErr(err)
+
+	return "file://" + f
 }

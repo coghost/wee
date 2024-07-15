@@ -1,19 +1,26 @@
 package wee
 
 import (
-	"encoding/json"
-	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/go-rod/rod/lib/proto"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/suite"
 	"github.com/ungerik/go-dry"
 )
 
+// fixtures serves fixtures/xxx as `file:///xxx`
+func fixtures(path string) string {
+	slash := filepath.FromSlash
+	f, err := filepath.Abs(slash("fixtures/" + path))
+	dry.PanicIfErr(err)
+
+	return "file://" + f
+}
+
 type BotSuite struct {
 	suite.Suite
+	// ts *httptest.Server
 }
 
 func TestBot(t *testing.T) {
@@ -21,50 +28,61 @@ func TestBot(t *testing.T) {
 }
 
 func (s *BotSuite) SetupSuite() {
+	// s.ts = newTestServer()
 }
 
 func (s *BotSuite) TearDownSuite() {
 }
 
-func (s *BotSuite) Test_00_init() {
-	w := NewBotDefault()
-	w.MustOpen("http://www.baidu.com")
-}
+func (s *BotSuite) Test00newBot() {
+	s.T().Parallel()
+	want := "<html><head></head>\n<body>\nhelloworld\n\n\n</body></html>"
 
-func (s *BotSuite) Test_01_cookie() {
-	raw := `views_132689=yes; wordpress_test_cookie=WP+Cookie+check; wordpress_logged_in_8f24464e4a1e05c313cf60c04d13d274=Hex%7C1700997303%7CIKXetb9KHNR7bN15AebHi0kXgwYtfX5NOEzCwEIF9gZ%7Cea11c7f4a05a7b0750776ce1a29f7c47c1330e46c61a412df381c6fd45db18e9; wp-settings-time-1448=1700824503; views_131771=yes; views_129606=yes; views_129359=yes; views_124189=yes; views_124432=yes; views_117539=yes; views_13794=yes; PHPSESSID=atv5rpufpivo360oppdm4vhggu`
-	domain := `qiyueba.com`
-
-	var ckarr []map[string]interface{}
-
-	arr := lo.Map(strings.Split(raw, ";"),
-		func(item string, index int) string {
-			return strings.TrimSpace(item)
-		})
-
-	for _, line := range arr {
-		d := make(map[string]interface{})
-		ar := strings.Split(line, "=")
-		if strings.Contains(ar[0], "views_") {
-			continue
-		}
-		d["name"] = ar[0]
-		d["value"] = ar[1]
-		d["domain"] = domain
-		d["path"] = "/"
-		d["source_port"] = 443
-
-		ckarr = append(ckarr, d)
+	tests := []struct {
+		name  string
+		c     *Bot
+		wantS string
+	}{
+		{
+			name:  "default_bot",
+			c:     NewBotDefault(),
+			wantS: want,
+		},
+		{
+			name:  "debug_bot",
+			c:     NewBotForDebug(),
+			wantS: want,
+		},
+		{
+			name:  "headless_bot",
+			c:     NewBot(Headless(true)),
+			wantS: want,
+		},
 	}
 
-	fmt.Println(ckarr)
-	err := dry.FileSetJSON("/tmp/001.json", ckarr)
-	s.Nil(err)
+	for _, tt := range tests {
+		s.T().Run("test_"+tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	// val, _ := dry.FileGetBytes("/tmp/backup_https_nfcloud.net.cookies")
-	val, _ := dry.FileGetBytes("/tmp/001.txt")
-	var cookies []proto.NetworkCookie
-	err = json.Unmarshal(val, &cookies)
-	s.Nil(err)
-	fmt.Println(cookies)
+			tt.c.MustOpen(fixtures("helloworld.html"))
+			raw := tt.c.page.MustHTML()
+			raw = strings.ReplaceAll(raw, " ", "")
+
+			s.Equal(tt.wantS, raw, "")
+		})
+	}
+}
+
+func (s *BotSuite) Test00newBotWithOptionsOnly() {
+	s.T().Parallel()
+
+	c := NewBotWithOptionsOnly()
+	s.Panics(func() {
+		c.MustOpen(fixtures("helloworld.html"))
+	}, "new bot only with options panics when open url")
+
+	BindBotLanucher(c)
+	s.NotPanics(func() {
+		c.MustOpen(fixtures("helloworld.html"))
+	}, "after binding bot with browser, shouldn't panic")
 }

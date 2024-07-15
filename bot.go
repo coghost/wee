@@ -14,65 +14,68 @@ import (
 )
 
 type Bot struct {
+	// UniqueID is the identifier of a bot.
 	UniqueID string
+
 	// init behaviours
 	launcher *launcher.Launcher
 	browser  *rod.Browser
 	page     *rod.Page
 	prevPage *rod.Page
+	root     *rod.Element
 
-	isLaunched bool
+	isLaunched       bool
+	withPageCreation bool
+	humanized        bool
+	stealthMode      bool
 
-	userMode bool
+	// launcher/browser options
+	userMode       bool
+	headless       bool
+	userAgent      string
+	acceptLanguage string
+	extensions     []string
 
-	headless bool
-
+	// cookies
 	withCookies  bool
 	cookieFolder string
 	cookieFile   string
-	// cURLFromClipboard
+	// cURLFromClipboard reads `copy as cURL` directly from clipboard
 	cURLFromClipboard string
 
-	extensions []string
-
-	root *rod.Element
-
-	withPage  bool
-	incognito bool
-
-	userAgent      string
-	acceptLanguage string
-
-	windowSize []int
-	viewSize   []int
-
+	// scrollHeight is the last valid height, use as fallback value.
 	scrollHeight float64
-	innerHeight  int
 
+	// highlightTimes highlight element times before next operation.
 	highlightTimes int
 
-	// popovers are anything that popup and block normal actions
+	// popovers are anything that popup and block normal actions,
+	// if popovers is set, will try to interact with it every time before doing input/click operations.
 	popovers []string
 
-	//
 	panicBy PanicByType
-
-	presetOptions []BotOption
 
 	longTimeout   time.Duration
 	mediumTimeout time.Duration
 	shortTimeout  time.Duration
 	napTimeout    time.Duration
 	pt10s         time.Duration
+
+	// unused options
+	// innerHeight  int
+	// presetOptions []BotOption
+	// windowSize []int
+	// viewSize   []int
+	// incognito bool
 }
 
 func NewBot(options ...BotOption) *Bot {
-	bot := &Bot{withPage: true}
+	bot := &Bot{withPageCreation: true}
 	bot.Init()
 
 	bindBotOptions(bot, options...)
 
-	checkIfHeadless(bot)
+	resetIfHeadless(bot)
 	bot.CustomizePage()
 
 	return bot
@@ -84,6 +87,7 @@ func NewBotWithOptionsOnly(options ...BotOption) *Bot {
 }
 
 // BindBotLanucher launches browser and page for bot.
+// this is used when we create bot first, and launch browser at somewhere else.
 func BindBotLanucher(bot *Bot, options ...BotOption) {
 	if bot.isLaunched {
 		log.Debug().Msg("browser is already launched")
@@ -94,13 +98,13 @@ func BindBotLanucher(bot *Bot, options ...BotOption) {
 	options = append(options, WithLauncher(l), WithBrowser(brw), WithPage(true))
 	bindBotOptions(bot, options...)
 
-	checkIfHeadless(bot)
+	resetIfHeadless(bot)
 	bot.CustomizePage()
 }
 
-func checkIfHeadless(bot *Bot) {
+func resetIfHeadless(bot *Bot) {
 	if bot.headless {
-		l, brw := NewBrowser(WithBrowserHeadless(bot.headless))
+		l, brw := NewBrowser(BrowserHeadless(bot.headless))
 		bot.launcher = l
 		bot.browser = brw
 	}
@@ -114,7 +118,7 @@ func NewBotDefault(options ...BotOption) *Bot {
 }
 
 func NewBotForDebug(options ...BotOption) *Bot {
-	l, brw := NewBrowser(WithPaintRects(true))
+	l, brw := NewBrowser(BrowserPaintRects(true))
 	options = append(options, WithLauncher(l), WithBrowser(brw))
 
 	return NewBot(options...)
@@ -132,6 +136,7 @@ func (b *Bot) Init() {
 	b.highlightTimes = 1
 	b.SetTimeout()
 	b.UniqueID = strutil.RandomCharsV3(16) //nolint:mnd
+
 	xlog.InitLogDebug()
 }
 
@@ -227,7 +232,7 @@ func WithHighlightTimes(i int) BotOption {
 
 func WithPage(b bool) BotOption {
 	return func(o *Bot) {
-		o.withPage = b
+		o.withPageCreation = b
 	}
 }
 
@@ -269,6 +274,18 @@ func WithExtensionFolder(arr []string) BotOption {
 func Headless(b bool) BotOption {
 	return func(o *Bot) {
 		o.headless = b
+	}
+}
+
+func Humanized(b bool) BotOption {
+	return func(o *Bot) {
+		o.humanized = b
+	}
+}
+
+func StealthMode(b bool) BotOption {
+	return func(o *Bot) {
+		o.stealthMode = b
 	}
 }
 

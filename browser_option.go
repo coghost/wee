@@ -11,6 +11,7 @@ type BrowserOptions struct {
 	extensions []string
 
 	noDefaultDevice bool
+	incognito       bool
 }
 
 type BrowserOptionFunc func(o *BrowserOptions)
@@ -49,6 +50,12 @@ func WithBrowserHeadless(b bool) BrowserOptionFunc {
 func NoDefaultDevice(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.noDefaultDevice = b
+	}
+}
+
+func Incognito(b bool) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.incognito = b
 	}
 }
 

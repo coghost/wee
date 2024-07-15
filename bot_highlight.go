@@ -15,7 +15,7 @@ const (
 
 func (b *Bot) FocusAndHighlight(elem *rod.Element) {
 	if b.highlightTimes == 0 {
-		elem.Focus()
+		_ = elem.Focus()
 	} else {
 		b.ScrollToElement(elem)
 		b.HighlightElem(elem)
@@ -60,11 +60,13 @@ func (b *Bot) Highlight(elem *rod.Element, show, hide float64, style string, cou
 
 	for i := 0; i < count; i++ {
 		script := fmt.Sprintf(`() => this.setAttribute("style", "%s");`, style)
-		elem.Eval(script)
+		_, _ = elem.Eval(script)
+
 		RandSleep(show-base, show+base)
 
 		script = fmt.Sprintf(`() => this.setAttribute("style", "%s");`, origStyle)
-		elem.Eval(script)
+		_, _ = elem.Eval(script)
+
 		RandSleep(hide-base, hide+base)
 	}
 

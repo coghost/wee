@@ -36,41 +36,23 @@ func parse(curl string) (*cURL, bool) {
 	state := ""
 
 	for _, arg := range args {
+		state = argToState(arg)
+
 		switch {
-		case isUrl(arg):
+		case isURL(arg):
 			request.URL = arg
-
-		case arg == "-A" || arg == "--user-agent":
-			state = "user-agent"
-
-		case arg == "-H" || arg == "--header":
-			state = "header"
-
-		case arg == "-d" || arg == "--data" || arg == "--data-ascii" || arg == "--data-raw":
-			state = "data"
-
-		case arg == "-u" || arg == "--user":
-			state = "user"
 
 		case arg == "-I" || arg == "--head":
 			request.Method = "HEAD"
-
-		case arg == "-X" || arg == "--request":
-			state = "method"
-
-		case arg == "-b" || arg == "--cookie":
-			state = "cookie"
 
 		case len(arg) > 0:
 			switch state {
 			case "header":
 				fields := parseField(arg)
 				request.Header[fields[0]] = strings.TrimSpace(fields[1])
-				state = ""
 
 			case "user-agent":
 				request.Header["User-Agent"] = arg
-				state = ""
 
 			case "data":
 				if request.Method == "GET" || request.Method == "HEAD" {
@@ -87,19 +69,14 @@ func parse(curl string) (*cURL, bool) {
 					request.Body = request.Body + "&" + arg
 				}
 
-				state = ""
-
 			case "user":
 				request.Header["Authorization"] = "Basic " + base64.StdEncoding.EncodeToString([]byte(arg))
-				state = ""
 
 			case "method":
 				request.Method = arg
-				state = ""
 
 			case "cookie":
 				request.Header["Cookie"] = arg
-				state = ""
 
 			default:
 				break
@@ -126,11 +103,36 @@ func parse(curl string) (*cURL, bool) {
 	return request, true
 }
 
+func argToState(arg string) string {
+	state := ""
+
+	switch {
+	case arg == "-A" || arg == "--user-agent":
+		state = "user-agent"
+
+	case arg == "-H" || arg == "--header":
+		state = "header"
+
+	case arg == "-d" || arg == "--data" || arg == "--data-ascii" || arg == "--data-raw":
+		state = "data"
+
+	case arg == "-u" || arg == "--user":
+		state = "user"
+
+	case arg == "-X" || arg == "--request":
+		state = "method"
+
+	case arg == "-b" || arg == "--cookie":
+		state = "cookie"
+	}
+
+	return state
+}
+
 func rewrite(args []string) []string {
 	res := make([]string, 0)
 
 	for _, arg := range args {
-
 		arg = strings.TrimSpace(arg)
 
 		if arg == "\n" {
@@ -153,7 +155,7 @@ func rewrite(args []string) []string {
 	return res
 }
 
-func isUrl(url string) bool {
+func isURL(url string) bool {
 	return strings.HasPrefix(url, "http://") ||
 		strings.HasPrefix(url, "https://")
 }

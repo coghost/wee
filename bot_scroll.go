@@ -10,14 +10,23 @@ import (
 	"github.com/go-rod/rod/lib/proto"
 )
 
+const (
+	_offsetToTop      = 0.25
+	_scrollHeight     = 1024
+	_longSleepChance  = 0.05
+	_shortSleepChance = 0.15
+	_scrollUpChance   = 0.9
+)
+
 var ErrElemShapeBox = errors.New("cannot get element box by shape.Box()")
 
+// ScrollToElement just a do the best operation
 func (b *Bot) ScrollToElement(elem *rod.Element, opts ...ElemOptionFunc) {
-	b.scrollToElement(elem, opts...)
+	_ = b.scrollToElement(elem, opts...)
 }
 
 func (b *Bot) scrollToElement(elem *rod.Element, opts ...ElemOptionFunc) error {
-	opt := ElemOptions{offsetToTop: 0.25, steps: ShortScrollStep}
+	opt := ElemOptions{offsetToTop: _offsetToTop, steps: ShortScrollStep}
 	bindElemOptions(&opt, opts...)
 
 	shape, err := elem.Shape()
@@ -67,7 +76,7 @@ func (b *Bot) ensureScrollHeight() {
 		// if b.scrollHeight == 0 {
 		// 	b.pie(err)
 		// }
-		b.scrollHeight = 1024
+		b.scrollHeight = _scrollHeight
 	} else {
 		b.scrollHeight = height
 	}
@@ -80,12 +89,17 @@ func (b *Bot) MustScrollToBottom(opts ...ElemOptionFunc) {
 	b.pie(e)
 }
 
+func (b *Bot) ScrollToBottom(opts ...ElemOptionFunc) error {
+	b.ensureScrollHeight()
+	return b.ScrollLikeHuman(0, b.scrollHeight, opts...)
+}
+
 func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) error {
 	scroller := &ScrollAsHuman{
 		enabled:          false,
-		longSleepChance:  0.1,
-		shortSleepChance: 0.2,
-		scrollUpChance:   0.9,
+		longSleepChance:  _longSleepChance,
+		shortSleepChance: _shortSleepChance,
+		scrollUpChance:   _scrollUpChance,
 	}
 
 	opt := ElemOptions{scrollAsHuman: scroller}
@@ -97,7 +111,8 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 	if !enabled || steps == 0 {
 		err := b.Scroll(offsetX, offsetY, steps)
 
-		RandSleep(0.1, 0.2)
+		SleepPT100Ms()
+
 		return err
 	}
 
@@ -113,6 +128,10 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 
 	startAt := time.Now()
 
+	const (
+		downPixel = 10
+	)
+
 	for totalScrolled < totalOffsetNeeded {
 		yNegative := false
 		// handle too slow scroll
@@ -120,27 +139,28 @@ func (b *Bot) ScrollLikeHuman(offsetX, offsetY float64, opts ...ElemOptionFunc) 
 		if cost > tooSlowTimeoutSec {
 			err := b.Scroll(offsetX, totalOffsetNeeded-totalScrolled, 1)
 
-			RandSleep(0.1, 0.2)
+			SleepPT100Ms()
+
 			return err
 		}
 
 		chance := rand.Float64()
 
 		if chance < opt.scrollAsHuman.longSleepChance {
-			RandSleep(0.5, 0.6)
+			SleepPT500Ms()
 			continue
 		}
 
 		if chance < opt.scrollAsHuman.shortSleepChance {
-			RandSleep(0.25, 0.3)
+			SleepPT250Ms()
 			continue
 		}
 
-		distance := rand.Intn(10) + int(base)
+		distance := rand.Intn(downPixel) + int(base)
 
 		if chance > opt.scrollAsHuman.scrollUpChance {
 			yNegative = true
-			distance = rand.Intn(20) + int(base)*2
+			distance = rand.Intn(downPixel*2) + int(base)*2 //nolint:mnd
 		}
 
 		if v := totalOffsetNeeded - totalScrolled; int(v) < distance {

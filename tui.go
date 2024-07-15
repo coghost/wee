@@ -8,6 +8,7 @@ import (
 	"github.com/coghost/xdtm"
 	"github.com/coghost/xpretty"
 	"github.com/pterm/pterm"
+	"github.com/spf13/cast"
 )
 
 func Blocked() {
@@ -45,6 +46,16 @@ func SleepWithSpin(timeInSeconds int, args ...string) {
 func Confirm(msg ...string) bool {
 	b, _ := pterm.DefaultInteractiveConfirm.Show(msg...)
 	return b
+}
+
+func TermScanf(msg ...string) string {
+	result, _ := pterm.DefaultInteractiveTextInput.Show(msg...)
+	return result
+}
+
+func TermScanfInt(msg ...string) int {
+	result, _ := pterm.DefaultInteractiveTextInput.Show(msg...)
+	return cast.ToInt(result)
 }
 
 func QuitIfY() {
