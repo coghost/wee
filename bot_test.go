@@ -1,22 +1,11 @@
 package wee
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/suite"
-	"github.com/ungerik/go-dry"
 )
-
-// fixtures serves fixtures/xxx as `file:///xxx`
-func fixtures(path string) string {
-	slash := filepath.FromSlash
-	f, err := filepath.Abs(slash("fixtures/" + path))
-	dry.PanicIfErr(err)
-
-	return "file://" + f
-}
 
 type BotSuite struct {
 	suite.Suite
@@ -34,9 +23,9 @@ func (s *BotSuite) SetupSuite() {
 func (s *BotSuite) TearDownSuite() {
 }
 
-func (s *BotSuite) Test00newBot() {
+func (s *BotSuite) Test00NewBot() {
 	s.T().Parallel()
-	want := "<html><head></head>\n<body>\nhelloworld\n\n\n</body></html>"
+	want := "<html><head></head>\n<body>\nhellowee\n\n\n</body></html>"
 
 	tests := []struct {
 		name  string
@@ -64,7 +53,7 @@ func (s *BotSuite) Test00newBot() {
 		s.T().Run("test_"+tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			tt.c.MustOpen(fixtures("helloworld.html"))
+			tt.c.MustOpen(fixtureFile("hellowee.html"))
 			raw := tt.c.page.MustHTML()
 			raw = strings.ReplaceAll(raw, " ", "")
 
@@ -73,16 +62,22 @@ func (s *BotSuite) Test00newBot() {
 	}
 }
 
-func (s *BotSuite) Test00newBotWithOptionsOnly() {
-	s.T().Parallel()
+func (s *BotSuite) Test00NewBotWithOptionsOnly() {
+	bot := NewBotWithOptionsOnly()
+	defer bot.Cleanup()
 
-	c := NewBotWithOptionsOnly()
+	s.Nil(bot.page)
 	s.Panics(func() {
-		c.MustOpen(fixtures("helloworld.html"))
+		bot.MustOpen(fixtureFile("helloworld.html"))
 	}, "new bot only with options panics when open url")
 
-	BindBotLanucher(c)
+	BindBotLanucher(bot)
+
+	s.NotNil(bot.page)
 	s.NotPanics(func() {
-		c.MustOpen(fixtures("helloworld.html"))
+		bot.MustOpen(fixtureFile("helloworld.html"))
 	}, "after binding bot with browser, shouldn't panic")
+}
+
+func (s *BotSuite) Test01CustomizePage() {
 }

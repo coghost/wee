@@ -3,15 +3,18 @@ package wee
 import "github.com/samber/lo"
 
 type BrowserOptions struct {
-	slowDelay  int
-	paintRects bool
-	headless   bool
-	flags      []string
-
-	extensions []string
-
+	paintRects      bool
+	headless        bool
 	noDefaultDevice bool
 	incognito       bool
+
+	slowMotionDelay int
+
+	userDataDir string
+
+	flags []string
+	// extensions dirs for unpacked extension
+	extensions []string
 }
 
 type BrowserOptionFunc func(o *BrowserOptions)
@@ -22,44 +25,52 @@ func bindBrowserOptions(opt *BrowserOptions, opts ...BrowserOptionFunc) {
 	}
 }
 
-func WithPaintRects(b bool) BrowserOptionFunc {
+func BrowserPaintRects(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.paintRects = b
 	}
 }
 
-func WithSlowDelay(i int) BrowserOptionFunc {
+func BrowserSlowMotionDelay(i int) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
-		o.slowDelay = i
+		o.slowMotionDelay = i
 	}
 }
 
-func WithFlags(arr ...string) BrowserOptionFunc {
+// BrowserFlags flags those are not pre-defined
+func BrowserFlags(arr ...string) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.flags = append(o.flags, arr...)
 		o.flags = lo.Uniq(o.flags)
 	}
 }
 
-func WithBrowserHeadless(b bool) BrowserOptionFunc {
+func BrowserUserDataDir(s string) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.userDataDir = s
+	}
+}
+
+func BrowserHeadless(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.headless = b
 	}
 }
 
-func NoDefaultDevice(b bool) BrowserOptionFunc {
+func BrowserNoDefaultDevice(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.noDefaultDevice = b
 	}
 }
 
-func Incognito(b bool) BrowserOptionFunc {
+func BrowserIncognito(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.incognito = b
 	}
 }
 
-func WithExtensions(extArr []string) BrowserOptionFunc {
+// BrowserExtensions dirs of extensions, only unpacked extension is supported.
+func BrowserExtensions(extArr []string) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.extensions = extArr
 	}
