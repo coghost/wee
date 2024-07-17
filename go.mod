@@ -12,8 +12,8 @@ require (
 	github.com/go-rod/rod v0.116.0
 	github.com/go-rod/stealth v0.4.9
 	github.com/gookit/goutil v0.6.15
+	github.com/jrefior/uncurl v0.0.0-20200216180557-8cdd106bc45f
 	github.com/k0kubun/pp/v3 v3.2.0
-	github.com/mattn/go-shellwords v1.0.12
 	github.com/pterm/pterm v0.12.79
 	github.com/rs/zerolog v1.33.0
 	github.com/samber/lo v1.39.0

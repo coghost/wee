@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -12,25 +13,24 @@ import (
 
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/gookit/goutil/fsutil"
+	"github.com/jrefior/uncurl"
 )
 
 var ErrEmptyCookieStr = errors.New("no cookie str found")
 
-var cookieFolder = fsutil.Expand("cookies")
+var cookieFolder = fsutil.Expand(".cookies")
 
 func (b *Bot) DumpCookies() (string, error) {
-	cookieFile := b.cookieFile
-
-	if cookieFile == "" {
+	if b.cookieFile == "" {
 		file, err := b.uniqueNameByURL(b.CurrentURL())
 		if err != nil {
 			return "", err
 		}
 
-		cookieFile = file
+		b.cookieFile = file
 	}
 
-	if err := fsutil.MkParentDir(cookieFile); err != nil {
+	if err := fsutil.MkParentDir(b.cookieFile); err != nil {
 		return "", err
 	}
 
@@ -41,19 +41,21 @@ func (b *Bot) DumpCookies() (string, error) {
 
 	var mode fs.FileMode = 0o644
 
-	err = os.WriteFile(cookieFile, content, mode)
+	err = os.WriteFile(b.cookieFile, content, mode)
 	if err != nil {
 		return "", fmt.Errorf("cannot save file: %w", err)
 	}
 
-	return cookieFile, nil
+	return b.cookieFile, nil
 }
 
-func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) {
-	if raw := b.cURLFromClipboard; raw != "" {
-		return ParseCopyAsCURLAsCookie(raw)
+func (b *Bot) getRawCookies(filepath string) ([]byte, error) {
+	// 1. check if copy as cURL
+	if len(b.copyAsCURLCookies) != 0 {
+		return b.copyAsCURLCookies, nil
 	}
 
+	// 2. filepath or auto get by URL
 	if filepath == "" {
 		v, err := b.uniqueNameByURL(b.CurrentURL())
 		if err != nil {
@@ -67,29 +69,30 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 		return nil, ErrMissingCookieFile
 	}
 
-	raw, err := os.ReadFile(filepath)
+	return os.ReadFile(filepath)
+}
+
+func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) {
+	raw, err := b.getRawCookies(filepath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot get raw cookies: %w", err)
 	}
 
-	// first try parse as cURL
-	ckArr, err := ParseCopyAsCURLAsCookie(string(raw))
-	if err != nil {
-		return nil, err
+	if !IsJSON(string(raw)) {
+		// non json format, means from cURL
+		// parse as cURL
+		return ParseCopyAsCURLAsCookie(string(raw))
 	}
 
-	if ckArr != nil {
-		return ckArr, nil
-	}
+	// if not copyAsCURL cookies, try parse with json format.
+	var (
+		cookies []proto.NetworkCookie
+		nodes   []*proto.NetworkCookieParam
+	)
 
-	var cookies []proto.NetworkCookie
-
-	err = json.Unmarshal(raw, &cookies)
-	if err != nil {
+	if err := json.Unmarshal(raw, &cookies); err != nil {
 		return nil, fmt.Errorf("cannot unmarshal to proto.cookie: %w", err)
 	}
-
-	var nodes []*proto.NetworkCookieParam
 
 	for _, cookie := range cookies {
 		port := &cookie.SourcePort
@@ -140,25 +143,24 @@ func (b *Bot) GetCopyAsCURLCookie(filePath string) ([]*proto.NetworkCookieParam,
 }
 
 func ParseCopyAsCURLAsCookie(raw string) ([]*proto.NetworkCookieParam, error) {
-	req, b := parse(raw)
-	if !b {
-		return nil, nil
+	curl, err := uncurl.NewString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("cannot new copy as curl: %w", err)
 	}
 
-	cookieStr, ok := req.Header["cookie"]
-	if !ok {
+	cookieArr := getHeader(curl.Header(), "Cookie")
+	if len(cookieArr) == 0 {
 		return nil, ErrEmptyCookieStr
 	}
 
-	uriQuery, err := url.Parse(req.URL)
+	uriQuery, err := url.Parse(curl.Target())
 	if err != nil {
 		return nil, err
 	}
 
-	// ckObjArr := []map[string]interface{}{}
 	var nodes []*proto.NetworkCookieParam
 
-	for _, pair := range strings.Split(cookieStr, "; ") {
+	for _, pair := range strings.Split(cookieArr[0], "; ") {
 		pair = strings.TrimSpace(pair)
 		if pair == "" {
 			continue
@@ -186,4 +188,22 @@ func ParseCopyAsCURLAsCookie(raw string) ([]*proto.NetworkCookieParam, error) {
 	}
 
 	return nodes, nil
+}
+
+func getHeader(header http.Header, key string) []string {
+	cookieStr, b := header[key]
+	if b {
+		return cookieStr
+	}
+
+	return header[strings.ToLower(key)]
+}
+
+func flattenNodes(nodes []*proto.NetworkCookieParam) []string {
+	got := []string{}
+	for _, node := range nodes {
+		got = append(got, fmt.Sprintf("%s=%s", node.Name, node.Value))
+	}
+
+	return got
 }

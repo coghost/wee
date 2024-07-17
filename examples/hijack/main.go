@@ -19,8 +19,8 @@ func main() {
 
 	bot := wee.NewBotWithOptionsOnly(
 		wee.Headless(false),
-		wee.WithUserAgent(ua),
-		wee.WithAcceptLanguage("zh_CN"),
+		wee.UserAgent(ua),
+		wee.AcceptLanguage("zh_CN"),
 		wee.WithCookies(false),
 	)
 	defer bot.Cleanup()

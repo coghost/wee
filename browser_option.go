@@ -11,6 +11,8 @@ type BrowserOptions struct {
 	slowMotionDelay int
 
 	userDataDir string
+	// proxy ip:port
+	proxy string
 
 	flags []string
 	// extensions dirs for unpacked extension
@@ -60,6 +62,12 @@ func BrowserHeadless(b bool) BrowserOptionFunc {
 func BrowserNoDefaultDevice(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.noDefaultDevice = b
+	}
+}
+
+func BrowserProxy(s string) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.proxy = s
 	}
 }
 

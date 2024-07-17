@@ -57,12 +57,12 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 	}
 
 	if opt.endWithEscape {
-		ka, err := elem.KeyActions()
+		action, err := elem.KeyActions()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("cannot perform escape key action: %w", err)
 		}
 
-		_ = ka.Press(input.Escape).Do()
+		_ = action.Press(input.Escape).Do()
 	}
 
 	txt, err := elem.Text()
@@ -73,7 +73,12 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 	if opt.submit {
 		SleepPT100Ms()
 
-		if err := elem.MustKeyActions().Press(input.Enter).Do(); err != nil {
+		action, err := elem.KeyActions()
+		if err != nil {
+			return "", fmt.Errorf("cannot perform enter key action: %w", err)
+		}
+
+		if err := action.Press(input.Enter).Do(); err != nil {
 			return "", fmt.Errorf("cannot submit after input text: %w", err)
 		}
 	}

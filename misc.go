@@ -6,7 +6,6 @@ import (
 	"math"
 	"math/rand"
 	"net/url"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -14,7 +13,6 @@ import (
 
 	"github.com/gookit/goutil/strutil"
 	"github.com/spf13/cast"
-	"github.com/ungerik/go-dry"
 )
 
 // FirstOrDefault
@@ -231,13 +229,4 @@ func NameFromURL(uri string) string {
 	}
 
 	return Filenamify(name)
-}
-
-// fixtureFile serves fixtureFile/xxx as `file:///xxx`
-func fixtureFile(path string) string {
-	slash := filepath.FromSlash
-	f, err := filepath.Abs(slash("fixtures/" + path))
-	dry.PanicIfErr(err)
-
-	return "file://" + f
 }

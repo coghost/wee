@@ -71,6 +71,10 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 		})
 	}
 
+	if proxy := opt.proxy; proxy != "" {
+		lnchr.Proxy(proxy)
+	}
+
 	return lnchr
 }
 

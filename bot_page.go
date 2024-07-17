@@ -9,8 +9,8 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
 	"github.com/go-rod/stealth"
-	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
+	"go.uber.org/zap"
 )
 
 var (
@@ -40,7 +40,7 @@ func (b *Bot) CustomizePage() {
 
 	if ua != "" || lang != "" {
 		ov := overrideUA(ua, lang)
-		b.page.MustSetUserAgent(ov)
+		b.page = b.page.MustSetUserAgent(ov)
 	}
 
 	// w, h := 1280, 768
@@ -76,8 +76,18 @@ func (b *Bot) MiscellanyBackup() error {
 }
 
 func (b *Bot) MustOpen(uri string) {
-	err := b.OpenWithCookies(uri)
-	b.pie(err)
+	withCookies := b.withCookies ||
+		b.cookieFile != "" ||
+		len(b.copyAsCURLCookies) != 0
+
+	b.logger.Debug("open page", zap.Bool("cookies", withCookies))
+	// not with cookies, return
+	if !withCookies {
+		b.pie(b.Open(uri))
+		return
+	}
+
+	b.pie(b.OpenWithCookies(uri))
 }
 
 // OpenWithCookies open uri with cookies.
@@ -87,16 +97,6 @@ func (b *Bot) MustOpen(uri string) {
 //   - load cookies
 //   - open uri
 func (b *Bot) OpenWithCookies(uri string, timeouts ...time.Duration) error {
-	withCookies := b.withCookies ||
-		b.cookieFile != "" ||
-		// b.copyAscURLCookieFile != "" ||
-		b.cURLFromClipboard != ""
-
-	// not with cookies, return
-	if !withCookies {
-		return b.Open(uri)
-	}
-
 	up, err := url.Parse(uri)
 	if err != nil {
 		return err
@@ -108,10 +108,13 @@ func (b *Bot) OpenWithCookies(uri string, timeouts ...time.Duration) error {
 	}
 
 	nodes, err := b.LoadCookies(b.cookieFile)
-	if err == nil {
-		err = b.page.SetCookies(nodes)
-		if err != nil {
-			log.Error().Err(err).Msg("set cookies failed")
+	if err != nil {
+		b.logger.Info("cannot load cookies", zap.Error(err))
+	}
+
+	if len(nodes) != 0 {
+		if err = b.page.SetCookies(nodes); err != nil {
+			b.logger.Error("set cookies failed", zap.Error(err))
 		}
 	}
 

@@ -1,13 +1,17 @@
 package wee
 
 import (
+	"net/http/httptest"
 	"testing"
 
+	"github.com/coghost/wee/fixtures"
 	"github.com/stretchr/testify/suite"
 )
 
 type BrowserSuite struct {
 	suite.Suite
+
+	ts *httptest.Server
 }
 
 func TestBrowser(t *testing.T) {
@@ -15,6 +19,7 @@ func TestBrowser(t *testing.T) {
 }
 
 func (s *BrowserSuite) SetupSuite() {
+	s.ts = fixtures.NewTestServer()
 }
 
 func (s *BrowserSuite) TearDownSuite() {
@@ -49,7 +54,7 @@ func (s *BrowserSuite) TestNewBrowser() {
 	s.True(b)
 	s.Contains(v, dataDir)
 
-	brw.MustPage(fixtureFile("hellowee.html"))
+	brw.MustPage(s.ts.URL)
 	// uncomment Blocked() to check the extension manually.
 	// Blocked()
 	SleepN(2)

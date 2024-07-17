@@ -3,19 +3,21 @@ package wee
 import (
 	"time"
 
-	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
+	"github.com/coghost/zlog"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/strutil"
-	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 )
 
 type Bot struct {
 	// UniqueID is the identifier of a bot.
 	UniqueID string
+
+	logger *zap.Logger
 
 	// init behaviours
 	launcher *launcher.Launcher
@@ -40,8 +42,8 @@ type Bot struct {
 	withCookies  bool
 	cookieFolder string
 	cookieFile   string
-	// cURLFromClipboard reads `copy as cURL` directly from clipboard
-	cURLFromClipboard string
+	// copyAsCURLCookies reads `copy as cURL` directly from clipboard
+	copyAsCURLCookies []byte
 
 	// scrollHeight is the last valid height, use as fallback value.
 	scrollHeight float64
@@ -71,7 +73,7 @@ type Bot struct {
 
 func NewBot(options ...BotOption) *Bot {
 	bot := &Bot{withPageCreation: true}
-	bot.Init()
+	bot.initialize()
 
 	bindBotOptions(bot, options...)
 
@@ -90,12 +92,11 @@ func NewBotWithOptionsOnly(options ...BotOption) *Bot {
 // this is used when we create bot first, and launch browser at somewhere else.
 func BindBotLanucher(bot *Bot, options ...BotOption) {
 	if bot.isLaunched {
-		log.Debug().Msg("browser is already launched")
 		return
 	}
 
 	l, brw := NewBrowser()
-	options = append(options, WithLauncher(l), WithBrowser(brw), WithPage(true))
+	options = append(options, Launcher(l), Browser(brw), WithPage(true))
 	bindBotOptions(bot, options...)
 
 	resetIfHeadless(bot)
@@ -110,34 +111,40 @@ func resetIfHeadless(bot *Bot) {
 	}
 }
 
+// NewBotDefault creates a bot with a default launcher/browser,
+// the launcher/browser passed in will be ignored.
 func NewBotDefault(options ...BotOption) *Bot {
 	l, brw := NewBrowser()
-	options = append(options, WithLauncher(l), WithBrowser(brw))
+	options = append(options, Launcher(l), Browser(brw))
 
 	return NewBot(options...)
 }
 
+// NewBotForDebug creates a bot which launches browser with option: `--show-paint-rects`,
+//
+// refer: https://peter.sh/experiments/chromium-command-line-switches/#show-paint-rects
 func NewBotForDebug(options ...BotOption) *Bot {
 	l, brw := NewBrowser(BrowserPaintRects(true))
-	options = append(options, WithLauncher(l), WithBrowser(brw))
+	options = append(options, Launcher(l), Browser(brw))
 
 	return NewBot(options...)
 }
 
+// NewBotUserMode calls to go-rod NewUserMode, connects to system chrome browser
 func NewBotUserMode(options ...BotOption) *Bot {
 	l, brw := NewUserMode()
-	options = append(options, WithLauncher(l), WithBrowser(brw), setUserMode(true))
+	options = append(options, Launcher(l), Browser(brw), setUserMode(true))
 
 	return NewBot(options...)
 }
 
-// Init init all attributes not exposed with options
-func (b *Bot) Init() {
+// initialize inits all attributes not exposed with options
+func (b *Bot) initialize() {
+	b.logger = zlog.MustNewZapLogger()
+
 	b.highlightTimes = 1
 	b.SetTimeout()
 	b.UniqueID = strutil.RandomCharsV3(16) //nolint:mnd
-
-	xlog.InitLogDebug()
 }
 
 func (b *Bot) BlockInCleanUp() {
@@ -147,9 +154,7 @@ func (b *Bot) BlockInCleanUp() {
 
 func (b *Bot) Cleanup() {
 	if b.userMode {
-		// b.page.Close()
-		log.Debug().Msg("in user mode, no clean up")
-
+		b.logger.Debug("runs with user mode, skip cleanup")
 		return
 	}
 
@@ -179,10 +184,10 @@ func (b *Bot) pie(err error) {
 		dump.P(err)
 		xpretty.DumpCallerStack()
 	case PanicByLogError:
-		log.Error().Err(err).Msg("error of bot")
+		b.logger.Error("error happens", zap.Error(err))
 	default:
 		dump.P(err)
-		log.Panic().Err(err).Msg("error of bot")
+		b.logger.Panic("error happens", zap.Error(err))
 	}
 }
 
@@ -200,25 +205,25 @@ func bindBotOptions(b *Bot, opts ...BotOption) {
 	}
 }
 
-func WithLauncher(l *launcher.Launcher) BotOption {
+func Launcher(l *launcher.Launcher) BotOption {
 	return func(o *Bot) {
 		o.launcher = l
 	}
 }
 
-func WithBrowser(brw *rod.Browser) BotOption {
+func Browser(brw *rod.Browser) BotOption {
 	return func(o *Bot) {
 		o.browser = brw
 	}
 }
 
-func WithUserAgent(s string) BotOption {
+func UserAgent(s string) BotOption {
 	return func(o *Bot) {
 		o.userAgent = s
 	}
 }
 
-func WithAcceptLanguage(s string) BotOption {
+func AcceptLanguage(s string) BotOption {
 	return func(o *Bot) {
 		o.acceptLanguage = s
 	}
@@ -236,7 +241,7 @@ func WithPage(b bool) BotOption {
 	}
 }
 
-// WithCookies will automatically load cookies from current dir for "cookies/xxx".
+// WithCookies will automatically load cookies from current dir for ".cookies/xxx".
 func WithCookies(b bool) BotOption {
 	return func(o *Bot) {
 		o.withCookies = b
@@ -258,10 +263,10 @@ func WithCookieFile(s string) BotOption {
 	}
 }
 
-// WithCURLFromClipboard reads the raw content `Copy as cURL` from clipboard
-func WithCURLFromClipboard(s string) BotOption {
+// CopyAsCURLCookies reads the raw content `Copy as cURL` from clipboard
+func CopyAsCURLCookies(b []byte) BotOption {
 	return func(o *Bot) {
-		o.cURLFromClipboard = s
+		o.copyAsCURLCookies = b
 	}
 }
 
