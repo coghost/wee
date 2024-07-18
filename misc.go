@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/gookit/goutil/strutil"
 	"github.com/spf13/cast"
 )
@@ -229,4 +230,15 @@ func NameFromURL(uri string) string {
 	}
 
 	return Filenamify(name)
+}
+
+// NoEcho eats everything.
+func NoEcho(...any) {}
+
+func RetryIn3(retryableFunc retry.RetryableFunc) error {
+	return retry.Do(
+		retryableFunc,
+		retry.LastErrorOnly(true),
+		retry.Attempts(3), //nolint:mnd
+		retry.Delay(time.Second*1))
 }

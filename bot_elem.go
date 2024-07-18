@@ -9,6 +9,8 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/coghost/xpretty"
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/input"
+	"github.com/gookit/goutil/sysutil"
 	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
 )
@@ -18,7 +20,10 @@ const (
 	_iframeLen    = 2
 )
 
-var ErrSelectorEmpty = errors.New("selector is empty")
+var (
+	ErrSelectorEmpty   = errors.New("selector is empty")
+	ErrNotInteractable = errors.New("elem not interactable")
+)
 
 func (b *Bot) MustElem(selector string, opts ...ElemOptionFunc) *rod.Element {
 	elem, err := b.Elem(selector, opts...)
@@ -443,4 +448,61 @@ func (b *Bot) NotNilElem(sel string, opts []ElemOptionFunc) (*rod.Element, error
 	}
 
 	return elem, nil
+}
+
+func (b *Bot) TryFocusElem(elem *rod.Element, scrollToRight bool) error {
+	return RetryIn3(
+		func() error {
+			if _, err := elem.Interactable(); err != nil {
+				_ = rod.Try(func() {
+					_ = b.ScrollToElemDirectly(elem)
+					if scrollToRight {
+						_ = b.page.Mouse.Scroll(1024, 0, 4) //nolint:mnd
+					}
+				})
+
+				return err
+			}
+
+			return nil
+		})
+}
+
+func (b *Bot) OpenElem(elem *rod.Element, opts ...ElemOptionFunc) error {
+	opt := ElemOptions{root: b.root, timeout: ShortToSec}
+	bindElemOptions(&opt, opts...)
+
+	if err := b.TryFocusElem(elem, true); err != nil {
+		return ErrNotInteractable
+	}
+
+	if opt.openInTab {
+		return b.OpenInNewTab(elem)
+	}
+
+	return b.ClickElem(elem)
+}
+
+// OpenInNewTab opens an element (usually a link/button) in a new tab by Ctrl+Click.
+func (b *Bot) OpenInNewTab(elem *rod.Element) error {
+	pages := b.browser.MustPages()
+
+	ctrlKey := input.ControlLeft
+	if sysutil.IsMac() {
+		ctrlKey = input.MetaLeft
+	}
+
+	b.FocusAndHighlight(elem)
+
+	err := elem.MustKeyActions().Press(ctrlKey).Type(input.Enter).Do()
+	if err != nil {
+		return fmt.Errorf("cannot do ctrl click: %w", err)
+	}
+
+	err = b.ActivateLastOpenedPage(pages, 10) //nolint:mnd
+	if err != nil {
+		return fmt.Errorf("cannot switch opened page: %w", err)
+	}
+
+	return nil
 }

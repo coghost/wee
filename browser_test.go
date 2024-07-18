@@ -31,7 +31,7 @@ func (s *BrowserSuite) TestNewLauncher() {
 }
 
 func (s *BrowserSuite) TestNewBrowser() {
-	exts := []string{"fixtures/chrome-extension"}
+	exts := "fixtures/chrome-extension"
 	dataDir := "/tmp/001"
 
 	l, brw := NewBrowser(

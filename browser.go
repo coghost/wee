@@ -41,6 +41,11 @@ func NewBrowser(opts ...BrowserOptionFunc) (*launcher.Launcher, *rod.Browser) {
 		brw.MustIncognito()
 	}
 
+	// just ignore cert errors
+	if opt.ignoreCertErrors {
+		_ = brw.IgnoreCertErrors(opt.ignoreCertErrors)
+	}
+
 	brw.SlowMotion(time.Millisecond * time.Duration(opt.slowMotionDelay))
 
 	return lnchr, brw
@@ -53,9 +58,9 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 	lnchr := launcher.New()
 	setLauncher(lnchr, opt.headless)
 
-	for _, extFolder := range opt.extensions {
-		lnchr.Set("load-extension", extFolder)
-	}
+	// for _, extFolder := range opt.extensions {
+	lnchr.Set("load-extension", strings.Join(opt.extensions, ","))
+	// }
 
 	if dir := opt.userDataDir; dir != "" {
 		lnchr.UserDataDir(dir)

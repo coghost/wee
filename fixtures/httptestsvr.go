@@ -1,7 +1,6 @@
 package fixtures
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"net"
@@ -124,6 +123,7 @@ func newUnstartedTestServer() *httptest.Server {
 </body>
 </html>
 		`
+
 		w.WriteHeader(200)
 		arr := []string{"<ul>"}
 		for key, hdr := range r.Header {
@@ -136,76 +136,44 @@ func newUnstartedTestServer() *httptest.Server {
 		w.Write([]byte(raw))
 	})
 
-	mux.HandleFunc("/base", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/activate", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<!DOCTYPE html>
 <html>
 <head>
-<title>Test Page</title>
-<base href="http://xy.com/" />
+<title>Activate</title>
 </head>
 <body>
-<a href="z">link</a>
+<a href="/activate/newtab" target="_blank">open in new tab</a>
+<a href="/activate/self">open in same tab</a>
 </body>
-</html>
-		`))
+</html>`))
 	})
 
-	mux.HandleFunc("/base_relative", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/activate/newtab", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<!DOCTYPE html>
 <html>
 <head>
-<title>Test Page</title>
-<base href="/foobar/" />
+<title>HelloNewTab</title>
 </head>
 <body>
-<a href="z">link</a>
+<p>Hello New Tab</p>
 </body>
-</html>
-		`))
+</html>`))
 	})
 
-	mux.HandleFunc("/tabs_and_newlines", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/activate/self", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<!DOCTYPE html>
 <html>
 <head>
-<title>Test Page</title>
-<base href="/foo	bar/" />
+<title>HelloSelf</title>
 </head>
 <body>
-<a href="x
-y">link</a>
+<p>Hello Self</p>
 </body>
-</html>
-		`))
-	})
-
-	mux.HandleFunc("/foobar/xy", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		w.Write([]byte(`<!DOCTYPE html>
-<html>
-<head>
-<title>Test Page</title>
-</head>
-<body>
-<p>hello</p>
-</body>
-</html>
-		`))
-	})
-
-	mux.HandleFunc("/large_binary", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		ww := bufio.NewWriter(w)
-		defer ww.Flush()
-		for {
-			// have to check error to detect client aborting download
-			if _, err := ww.Write([]byte{0x41}); err != nil {
-				return
-			}
-		}
+</html>`))
 	})
 
 	mux.HandleFunc("/slow", func(w http.ResponseWriter, r *http.Request) {

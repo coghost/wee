@@ -4,6 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
+	"regexp"
+	"runtime"
 	"time"
 
 	"github.com/go-rod/rod"
@@ -11,6 +14,14 @@ import (
 	"github.com/go-rod/stealth"
 	"github.com/thoas/go-funk"
 	"go.uber.org/zap"
+)
+
+const (
+	ActivatePageRetry = 10
+)
+
+const (
+	_domStableDiff = 0.95
 )
 
 var (
@@ -60,22 +71,9 @@ func (b *Bot) CustomizePage() {
 	b.isLaunched = true
 }
 
-func (b *Bot) MiscellanyBackup() error {
-	if err := b.browser.IgnoreCertErrors(true); err != nil {
-		return err
-	}
-
-	pg, err := stealth.Page(b.browser)
-	if err != nil {
-		return fmt.Errorf("cannot stealth page: %w", err)
-	}
-
-	b.page = pg
-
-	return nil
-}
-
 func (b *Bot) MustOpen(uri string) {
+	defer b.LogTimeSpent(time.Now())
+
 	withCookies := b.withCookies ||
 		b.cookieFile != "" ||
 		len(b.copyAsCURLCookies) != 0
@@ -131,16 +129,18 @@ func (b *Bot) Open(url string, timeouts ...time.Duration) error {
 	return b.page.Timeout(timeout).WaitLoad()
 }
 
-func (b *Bot) Page() *rod.Page {
-	return b.page
-}
+// OpenURLInNewTab opens url in a new tab and activates it
+func (b *Bot) OpenURLInNewTab(uri string) error {
+	p, err := b.browser.Page(proto.TargetCreateTarget{URL: uri})
+	if err != nil {
+		return fmt.Errorf("cannot new page with url(%s): %w", uri, err)
+	}
 
-func (b *Bot) Browser() *rod.Browser {
-	return b.browser
-}
+	if err := b.ActivatePage(p); err != nil {
+		return fmt.Errorf("cannot activate new page: %w", err)
+	}
 
-func (b *Bot) CurrentURL() string {
-	return b.page.MustInfo().URL
+	return nil
 }
 
 // MustEval  a wrapper with MediumTo to rod.Page.MustEval
@@ -163,53 +163,45 @@ func (b *Bot) Eval(script string) (*proto.RuntimeRemoteObject, error) {
 	return obj, nil
 }
 
-// URLContains uses `decodeURIComponent(window.location.href).includes` to check if url has str or not
-func (b *Bot) URLContains(str string, timeouts ...float64) error {
+// WaitURLContains uses `decodeURIComponent(window.location.href).includes` to check if url has str or not,
+// Scenario:
+//
+//   - if a page's loading status can be determined by url
+func (b *Bot) WaitURLContains(str string, timeouts ...float64) error {
+	defer b.LogTimeSpent(time.Now())
+
 	timeout := FirstOrDefault(float64(MediumToSec), timeouts...)
 	script := fmt.Sprintf(`() => decodeURIComponent(window.location.href).includes("%s")`, str)
 
-	err := rod.Try(func() {
+	return rod.Try(func() {
 		b.page.Timeout(time.Second * time.Duration(timeout)).MustWait(script).CancelTimeout()
 	})
-
-	return err
 }
 
-func (b *Bot) PageSource() string {
-	return b.page.MustHTML()
+func (b *Bot) MustDOMStable() {
+	defer b.LogTimeSpent(time.Now())
+
+	b.pie(b.DOMStable(b.pt1s, _domStableDiff))
 }
 
-func (b *Bot) MustStable() {
-	b.page.Timeout(b.mediumTimeout).MustWaitStable().CancelTimeout()
+func (b *Bot) DOMStable(d time.Duration, diff float64) error {
+	return b.page.Timeout(b.mediumTimeout).WaitDOMStable(d, diff)
 }
 
 func (b *Bot) MustWaitLoad() {
 	b.page.Timeout(b.mediumTimeout).MustWaitLoad().CancelTimeout()
 }
 
-func overrideUA(uaStr string, lang string) *proto.NetworkSetUserAgentOverride {
-	uaOverride := proto.NetworkSetUserAgentOverride{}
-	uaOverride.UserAgent = uaStr
-
-	if lang == "" {
-		lang = "en-CN,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,en-GB;q=0.6,en-US;q=0.5"
-	}
-
-	uaOverride.AcceptLanguage = lang
-
-	return &uaOverride
-}
-
-func (b *Bot) UpdatePage(page *rod.Page) error {
+// ActivatePage activates a page instead of current.
+func (b *Bot) ActivatePage(page *rod.Page) error {
 	b.prevPage, b.page = b.page, page
 	_, err := b.page.Activate()
 
 	return err
 }
 
-func (b *Bot) MustUpdatePage(page *rod.Page) {
-	err := b.UpdatePage(page)
-	b.pie(err)
+func (b *Bot) MustActivatePage(page *rod.Page) {
+	b.pie(b.ActivatePage(page))
 }
 
 func (b *Bot) ResetToOriginalPage() error {
@@ -233,6 +225,8 @@ func (b *Bot) ResetToOriginalPage() error {
 //		return c.activatePageByURLRegex(v)
 //	}
 func (b *Bot) ActivatePageByURLRegex(jsRegex string, retry int) error {
+	defer b.LogTimeSpent(time.Now())
+
 	var page *rod.Page
 
 	for i := 0; i < retry; i++ {
@@ -245,31 +239,78 @@ func (b *Bot) ActivatePageByURLRegex(jsRegex string, retry int) error {
 		break
 	}
 
-	return b.UpdatePage(page)
+	if page == nil {
+		return ErrCannotActivateOpenedPage
+	}
+
+	return b.ActivatePage(page)
 }
 
-func (b *Bot) ActivateLatestOpenedPage(pagesBefore rod.Pages, retry int) error {
-	var pageWant *rod.Page
+func (b *Bot) ActivateLastOpenedPage(pagesBefore rod.Pages, retry int) error {
+	defer b.LogTimeSpent(time.Now())
+
+	var page *rod.Page
 
 	for i := 0; i < retry; i++ {
 		pagesAfter := b.browser.MustPages()
-		for _, np := range pagesAfter {
-			if !funk.Contains(pagesBefore, np) {
-				pageWant = np
+		for _, p := range pagesAfter {
+			if !funk.Contains(pagesBefore, p) {
+				page = p
 				break
 			}
 		}
 
-		if pageWant != nil {
+		if page != nil {
 			break
 		}
 
 		SleepN(1.0)
 	}
 
-	if pageWant == nil {
+	if page == nil {
 		return ErrCannotActivateOpenedPage
 	}
 
-	return b.UpdatePage(pageWant)
+	return b.ActivatePage(page)
+}
+
+func (b *Bot) LogTimeSpent(start time.Time, skips ...int) {
+	const (
+		defaultSkip = 2
+	)
+
+	skip := FirstOrDefault(defaultSkip, skips...)
+
+	if b.trackTime {
+		b.TimeTrack(start, skip)
+	}
+}
+
+func (b *Bot) TimeTrack(start time.Time, skip int) {
+	elapsed := time.Since(start)
+
+	// Skip this function, and fetch the PC and file for its parent.
+	pc, file, _, _ := runtime.Caller(skip)
+	// Retrieve a function object this functions parent.
+	funcObj := runtime.FuncForPC(pc)
+	fname := filepath.Base(file)
+
+	// Regex to extract just the function name (and not the module path).
+	runtimeFunc := regexp.MustCompile(`^.*\.(.*)$`)
+	name := runtimeFunc.ReplaceAllString(funcObj.Name(), "$1")
+
+	b.logger.Sugar().Debugf("%s.%s took %.2fs", fname, name, elapsed.Seconds())
+}
+
+func overrideUA(uaStr string, lang string) *proto.NetworkSetUserAgentOverride {
+	uaOverride := proto.NetworkSetUserAgentOverride{}
+	uaOverride.UserAgent = uaStr
+
+	if lang == "" {
+		lang = "en-CN,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,en-GB;q=0.6,en-US;q=0.5"
+	}
+
+	uaOverride.AcceptLanguage = lang
+
+	return &uaOverride
 }

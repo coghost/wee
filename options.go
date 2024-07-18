@@ -36,6 +36,7 @@ type ElemOptions struct {
 
 	clickByScript    bool
 	handleCoverByEsc bool
+	openInTab        bool
 
 	scrollAsHuman *ScrollAsHuman
 
@@ -69,6 +70,12 @@ func WithIframe(page *rod.Page) ElemOptionFunc {
 func WithCaseInsensitive(b bool) ElemOptionFunc {
 	return func(o *ElemOptions) {
 		o.caseInsensitive = b
+	}
+}
+
+func OpenInTab(b bool) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.openInTab = b
 	}
 }
 

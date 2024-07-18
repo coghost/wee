@@ -23,6 +23,8 @@ func (b *Bot) MustClickAll(selectors []string, opts ...ElemOptionFunc) {
 }
 
 func (b *Bot) MustClick(selector string, opts ...ElemOptionFunc) {
+	defer b.LogTimeSpent(time.Now())
+
 	b.pie(b.Click(selector, opts...))
 }
 
@@ -226,5 +228,5 @@ func (b *Bot) MustClickOneByOne(selectors ...string) {
 		SleepPT500Ms()
 	}
 
-	b.MustStable()
+	b.MustDOMStable()
 }

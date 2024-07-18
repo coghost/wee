@@ -19,6 +19,9 @@ type Bot struct {
 
 	logger *zap.Logger
 
+	// trackTime tracks the time spend on operation.
+	trackTime bool
+
 	// init behaviours
 	launcher *launcher.Launcher
 	browser  *rod.Browser
@@ -62,6 +65,7 @@ type Bot struct {
 	shortTimeout  time.Duration
 	napTimeout    time.Duration
 	pt10s         time.Duration
+	pt1s          time.Duration
 
 	// unused options
 	// innerHeight  int
@@ -120,6 +124,12 @@ func NewBotDefault(options ...BotOption) *Bot {
 	return NewBot(options...)
 }
 
+// NewBotHeadless sets headless with NewBotDefault
+func NewBotHeadless(options ...BotOption) *Bot {
+	options = append(options, Headless(true))
+	return NewBotDefault(options...)
+}
+
 // NewBotForDebug creates a bot which launches browser with option: `--show-paint-rects`,
 //
 // refer: https://peter.sh/experiments/chromium-command-line-switches/#show-paint-rects
@@ -168,6 +178,7 @@ func (b *Bot) SetTimeout() {
 	b.shortTimeout = ShortToSec * time.Second
 	b.napTimeout = NapToSec * time.Second
 	b.pt10s = PT10Sec * time.Second
+	b.pt1s = 1 * time.Second
 }
 
 func (b *Bot) SetPanicWith(panicWith PanicByType) {
@@ -189,6 +200,18 @@ func (b *Bot) pie(err error) {
 		dump.P(err)
 		b.logger.Panic("error happens", zap.Error(err))
 	}
+}
+
+func (b *Bot) Page() *rod.Page {
+	return b.page
+}
+
+func (b *Bot) Browser() *rod.Browser {
+	return b.browser
+}
+
+func (b *Bot) CurrentURL() string {
+	return b.page.MustInfo().URL
 }
 
 func (b *Bot) CookieFile() string {
@@ -297,6 +320,18 @@ func StealthMode(b bool) BotOption {
 func setUserMode(b bool) BotOption {
 	return func(o *Bot) {
 		o.userMode = b
+	}
+}
+
+func TrackTime(b bool) BotOption {
+	return func(o *Bot) {
+		o.trackTime = b
+	}
+}
+
+func Logger(l *zap.Logger) BotOption {
+	return func(o *Bot) {
+		o.logger = l
 	}
 }
 

@@ -8,6 +8,8 @@ type BrowserOptions struct {
 	noDefaultDevice bool
 	incognito       bool
 
+	ignoreCertErrors bool
+
 	slowMotionDelay int
 
 	userDataDir string
@@ -30,6 +32,12 @@ func bindBrowserOptions(opt *BrowserOptions, opts ...BrowserOptionFunc) {
 func BrowserPaintRects(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.paintRects = b
+	}
+}
+
+func BrowserIgnoreCertErrors(b bool) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.ignoreCertErrors = b
 	}
 }
 
@@ -78,7 +86,7 @@ func BrowserIncognito(b bool) BrowserOptionFunc {
 }
 
 // BrowserExtensions dirs of extensions, only unpacked extension is supported.
-func BrowserExtensions(extArr []string) BrowserOptionFunc {
+func BrowserExtensions(extArr ...string) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.extensions = extArr
 	}
