@@ -28,7 +28,7 @@ func main() {
 	bot.MustOpen(mapper.Home)
 	bot.MustClick(mapper.CategoryLink)
 	bot.MustWaitLoad()
-	wsl := bot.CurrentUrl() + `?InventoryType=WhileSuppliesLast`
+	wsl := bot.CurrentURL() + `?InventoryType=WhileSuppliesLast`
 	bot.MustOpen(wsl)
 
 	bot.MustElemsForAllSelectors(mapper.Items)

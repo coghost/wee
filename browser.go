@@ -12,6 +12,11 @@ import (
 	"github.com/samber/lo"
 )
 
+const (
+	// SlowMotionMillis default slow motion duration 500ms
+	SlowMotionMillis = 500
+)
+
 const PaintRects = "--show-paint-rects"
 
 func NewUserMode() (*launcher.Launcher, *rod.Browser) {
@@ -22,23 +27,26 @@ func NewUserMode() (*launcher.Launcher, *rod.Browser) {
 }
 
 func NewBrowser(opts ...BrowserOptionFunc) (*launcher.Launcher, *rod.Browser) {
-	delay := 500
-	opt := BrowserOptions{slowDelay: delay, noDefaultDevice: true}
+	opt := BrowserOptions{slowMotionDelay: SlowMotionMillis, noDefaultDevice: true}
 	bindBrowserOptions(&opt, opts...)
 
 	lnchr := NewLauncher(opts...)
-
-	for _, extFolder := range opt.extensions {
-		// only support unpacked extension
-		lnchr.Set("load-extension", extFolder)
-	}
 
 	brw := rod.New().ControlURL(lnchr.MustLaunch()).MustConnect()
 	if opt.noDefaultDevice {
 		brw.NoDefaultDevice()
 	}
 
-	brw.SlowMotion(time.Millisecond * time.Duration(opt.slowDelay))
+	if opt.incognito {
+		brw.MustIncognito()
+	}
+
+	// just ignore cert errors
+	if opt.ignoreCertErrors {
+		_ = brw.IgnoreCertErrors(opt.ignoreCertErrors)
+	}
+
+	brw.SlowMotion(time.Millisecond * time.Duration(opt.slowMotionDelay))
 
 	return lnchr, brw
 }
@@ -47,20 +55,32 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 	opt := BrowserOptions{}
 	bindBrowserOptions(&opt, opts...)
 
-	lauch := launcher.New()
-	setLauncher(lauch, opt.headless)
+	lnchr := launcher.New()
+	setLauncher(lnchr, opt.headless)
+
+	// for _, extFolder := range opt.extensions {
+	lnchr.Set("load-extension", strings.Join(opt.extensions, ","))
+	// }
+
+	if dir := opt.userDataDir; dir != "" {
+		lnchr.UserDataDir(dir)
+	}
 
 	if opt.paintRects {
-		lauch.Set(PaintRects)
+		lnchr.Set(PaintRects)
 	}
 
 	if len(opt.flags) != 0 {
 		lo.ForEach(opt.flags, func(item string, i int) {
-			lauch.Set(flags.Flag(item))
+			lnchr.Set(flags.Flag(item))
 		})
 	}
 
-	return lauch
+	if proxy := opt.proxy; proxy != "" {
+		lnchr.Proxy(proxy)
+	}
+
+	return lnchr
 }
 
 func newUserModeLauncher() (*launcher.Launcher, string) {

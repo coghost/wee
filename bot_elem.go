@@ -9,6 +9,8 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/coghost/xpretty"
 	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/input"
+	"github.com/gookit/goutil/sysutil"
 	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
 )
@@ -18,7 +20,10 @@ const (
 	_iframeLen    = 2
 )
 
-var ErrSelectorEmpty = errors.New("selector is empty")
+var (
+	ErrSelectorEmpty   = errors.New("selector is empty")
+	ErrNotInteractable = errors.New("elem not interactable")
+)
 
 func (b *Bot) MustElem(selector string, opts ...ElemOptionFunc) *rod.Element {
 	elem, err := b.Elem(selector, opts...)
@@ -64,7 +69,7 @@ func (b *Bot) ElemByIndex(selector string, index int) (*rod.Element, error) {
 //   - when selector is like `div.abc@@@txt`, will use contains
 //   - when selector is like `div.abc@@@---@@@txt`, will use exact match
 func (b *Bot) ElemByText(selector string, opts ...ElemOptionFunc) (*rod.Element, error) {
-	opt := ElemOptions{root: b.root}
+	opt := ElemOptions{root: b.root, timeout: ShortToSec}
 	bindElemOptions(&opt, opts...)
 
 	arr := strings.Split(selector, SEP)
@@ -108,8 +113,6 @@ func (b *Bot) ElemsByText(selector string, opts ...ElemOptionFunc) ([]*rod.Eleme
 	if funk.IsEmpty(elems) {
 		return nil, nil
 	}
-
-	opts = append(opts, WithTimeout(PT10MilliSec))
 
 	elem, err := b.ElemByText(selector, opts...)
 	if err != nil {
@@ -303,13 +306,12 @@ func (b *Bot) getElementAttr(elem *rod.Element, opts ...ElemOptionFunc) (string,
 		return elem.Text()
 	}
 
-	s, e := elem.Attribute(attr)
-
+	raw, e := elem.Attribute(attr)
 	if e != nil {
 		return "", e
 	}
 
-	return *s, nil
+	return *raw, nil
 }
 
 func (b *Bot) AllElementsAttrMap(elems []*rod.Element, opts ...ElemOptionFunc) []map[string]string {
@@ -327,19 +329,19 @@ func (b *Bot) ElementAttrMap(elem *rod.Element, opts ...ElemOptionFunc) map[stri
 
 	res := make(map[string]string)
 
-	for k, attr := range opt.attrMap {
-		v, err := b.getElementAttr(elem, WithAttr(attr))
+	for key, attr := range opt.attrMap {
+		raw, err := b.getElementAttr(elem, WithAttr(attr))
 		if err != nil {
 			log.Error().Err(err).Msg("cannot get attr for attr map")
 		}
 
-		res[k] = v
+		res[key] = raw
 	}
 
 	return res
 }
 
-func (b *Bot) mustNotEmpty(selector string) {
+func (b *Bot) mustNotEmpty(selector string) { //nolint:unused
 	if selector == "" {
 		const callerStackOffset = 2
 		w, i := xpretty.Caller(callerStackOffset)
@@ -347,7 +349,7 @@ func (b *Bot) mustNotEmpty(selector string) {
 	}
 }
 
-func (b *Bot) mustNotByText(selector string) {
+func (b *Bot) mustNotByText(selector string) { //nolint:unused
 	if strings.Contains(selector, SEP) {
 		const callerStackOffset = 2
 		w, i := xpretty.Caller(callerStackOffset)
@@ -357,15 +359,15 @@ func (b *Bot) mustNotByText(selector string) {
 
 func (b *Bot) MustAnyElem(selectors []string, opts ...ElemOptionFunc) string {
 	start := time.Now()
-	s, err := b.AnyElem(selectors, opts...)
+	sel, err := b.AnyElem(selectors, opts...)
 	b.pie(err)
 
 	cost := time.Since(start).Seconds()
 	if cost > _logIfTimeout {
-		log.Debug().Str("selector", s).Str("cost", fmt.Sprintf("%.3fs", cost)).Msg("get by ensure")
+		log.Debug().Str("selector", sel).Str("cost", fmt.Sprintf("%.3fs", cost)).Msg("get by ensure")
 	}
 
-	return s
+	return sel
 }
 
 func (b *Bot) AnyElem(selectors []string, opts ...ElemOptionFunc) (string, error) {
@@ -373,7 +375,7 @@ func (b *Bot) AnyElem(selectors []string, opts ...ElemOptionFunc) (string, error
 }
 
 func (b *Bot) AnyElemWithTimeout(selectors []string, opts ...ElemOptionFunc) (string, error) {
-	opt := ElemOptions{timeout: MediumToSec}
+	opt := ElemOptions{timeout: MediumToSec, retries: 1}
 	bindElemOptions(&opt, opts...)
 
 	var (
@@ -393,12 +395,11 @@ func (b *Bot) AnyElemWithTimeout(selectors []string, opts ...ElemOptionFunc) (st
 
 			return err
 		},
-		retry.Attempts(3),
+		retry.Attempts(opt.retries),
+		retry.LastErrorOnly(true),
 	)
 
 	return sel, err
-	// })
-	// return sel, err
 }
 
 // appendToRace:
@@ -447,4 +448,61 @@ func (b *Bot) NotNilElem(sel string, opts []ElemOptionFunc) (*rod.Element, error
 	}
 
 	return elem, nil
+}
+
+func (b *Bot) TryFocusElem(elem *rod.Element, scrollToRight bool) error {
+	return RetryIn3(
+		func() error {
+			if _, err := elem.Interactable(); err != nil {
+				_ = rod.Try(func() {
+					_ = b.ScrollToElemDirectly(elem)
+					if scrollToRight {
+						_ = b.page.Mouse.Scroll(1024, 0, 4) //nolint:mnd
+					}
+				})
+
+				return err
+			}
+
+			return nil
+		})
+}
+
+func (b *Bot) OpenElem(elem *rod.Element, opts ...ElemOptionFunc) error {
+	opt := ElemOptions{root: b.root, timeout: ShortToSec}
+	bindElemOptions(&opt, opts...)
+
+	if err := b.TryFocusElem(elem, true); err != nil {
+		return ErrNotInteractable
+	}
+
+	if opt.openInTab {
+		return b.OpenInNewTab(elem)
+	}
+
+	return b.ClickElem(elem)
+}
+
+// OpenInNewTab opens an element (usually a link/button) in a new tab by Ctrl+Click.
+func (b *Bot) OpenInNewTab(elem *rod.Element) error {
+	pages := b.browser.MustPages()
+
+	ctrlKey := input.ControlLeft
+	if sysutil.IsMac() {
+		ctrlKey = input.MetaLeft
+	}
+
+	b.FocusAndHighlight(elem)
+
+	err := elem.MustKeyActions().Press(ctrlKey).Type(input.Enter).Do()
+	if err != nil {
+		return fmt.Errorf("cannot do ctrl click: %w", err)
+	}
+
+	err = b.ActivateLastOpenedPage(pages, 10) //nolint:mnd
+	if err != nil {
+		return fmt.Errorf("cannot switch opened page: %w", err)
+	}
+
+	return nil
 }

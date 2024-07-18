@@ -42,6 +42,7 @@ func main() {
 	bot.MustInput(inputs[1], vals[1], wee.WithHumanized(true))
 
 	bot.MustClick(inputs[2])
+
 	err := bot.InputSelect(inputs[2], vals[2])
 	if err != nil {
 		panic(err)

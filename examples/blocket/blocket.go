@@ -88,6 +88,6 @@ func main() {
 		bot.MustClickElemAndWait(button)
 	}
 
-	url := bot.CurrentUrl()
+	url := bot.CurrentURL()
 	pp.Println(url)
 }

@@ -23,10 +23,12 @@ type ElemOptions struct {
 	selectorType rod.SelectorType
 
 	timeout float64
+	retries uint
 
 	submit    bool
 	humanized bool
 
+	trigger          bool
 	clearBeforeInput bool
 	endWithEscape    bool
 
@@ -34,6 +36,7 @@ type ElemOptions struct {
 
 	clickByScript    bool
 	handleCoverByEsc bool
+	openInTab        bool
 
 	scrollAsHuman *ScrollAsHuman
 
@@ -70,9 +73,21 @@ func WithCaseInsensitive(b bool) ElemOptionFunc {
 	}
 }
 
+func OpenInTab(b bool) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.openInTab = b
+	}
+}
+
 func WithTimeout(t float64) ElemOptionFunc {
 	return func(o *ElemOptions) {
 		o.timeout = t
+	}
+}
+
+func WithRetries(i uint) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.retries = i
 	}
 }
 
@@ -103,6 +118,12 @@ func WithSelectorType(t rod.SelectorType) ElemOptionFunc {
 func WithSubmit(b bool) ElemOptionFunc {
 	return func(o *ElemOptions) {
 		o.submit = b
+	}
+}
+
+func Trigger(b bool) ElemOptionFunc {
+	return func(o *ElemOptions) {
+		o.trigger = b
 	}
 }
 

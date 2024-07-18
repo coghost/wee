@@ -24,7 +24,7 @@ func (b *Bot) MustInput(sel, text string, opts ...ElemOptionFunc) string {
 
 // Input first clear all content, and then input text content.
 func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
-	opt := ElemOptions{submit: false, timeout: PT10Sec, clearBeforeInput: true, endWithEscape: false}
+	opt := ElemOptions{submit: false, timeout: PT10Sec, clearBeforeInput: true, endWithEscape: false, humanized: b.humanized}
 	bindElemOptions(&opt, opts...)
 
 	// click the input elem to trigger before input
@@ -47,18 +47,22 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 		}
 	}
 
+	if opt.trigger {
+		_ = b.ClickElem(elem)
+	}
+
 	// elem = elem.Timeout(time.Second * b.ShortTo).MustSelectAllText().MustInput(text)
 	if err := b.typeAsHuman(elem, text, opt.humanized); err != nil {
 		return "", fmt.Errorf("cannot input text: %w", err)
 	}
 
 	if opt.endWithEscape {
-		ka, err := elem.KeyActions()
+		action, err := elem.KeyActions()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("cannot perform escape key action: %w", err)
 		}
 
-		_ = ka.Press(input.Escape).Do()
+		_ = action.Press(input.Escape).Do()
 	}
 
 	txt, err := elem.Text()
@@ -67,9 +71,14 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 	}
 
 	if opt.submit {
-		RandSleep(0.1, 0.15) //nolint:mnd
+		SleepPT100Ms()
 
-		if err := elem.MustKeyActions().Press(input.Enter).Do(); err != nil {
+		action, err := elem.KeyActions()
+		if err != nil {
+			return "", fmt.Errorf("cannot perform enter key action: %w", err)
+		}
+
+		if err := action.Press(input.Enter).Do(); err != nil {
 			return "", fmt.Errorf("cannot submit after input text: %w", err)
 		}
 	}
