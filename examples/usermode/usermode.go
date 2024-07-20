@@ -1,10 +1,11 @@
 package main
 
 import (
+	"log"
+
 	"github.com/coghost/wee"
 	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
-	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -28,13 +29,13 @@ func main() {
 	sel := bot.MustAnyElem([]string{results, noResults})
 
 	if sel == noResults {
-		log.Warn().Msg("no results found")
+		log.Print("no results found")
 		return
 	}
 
 	elems, err := bot.Elems(results)
 	if err != nil {
-		log.Error().Err(err).Msg("cannot get results")
+		log.Printf("cannot get results: %v", err)
 	}
 
 	for _, elem := range elems {

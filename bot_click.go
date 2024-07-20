@@ -8,7 +8,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
 	"github.com/go-rod/rod/lib/proto"
-	"github.com/rs/zerolog/log"
+	"go.uber.org/zap"
 )
 
 func (b *Bot) MustClickAndWait(selector string, opts ...ElemOptionFunc) {
@@ -86,7 +86,6 @@ func (b *Bot) EnsureInteractable(elem *rod.Element, byEsc bool) error {
 	}
 
 	if hit := b.CloseIfHasPopovers(b.popovers...); hit != 0 {
-		log.Trace().Int("hit", hit).Msg("closed pop")
 		return nil
 	}
 
@@ -141,7 +140,7 @@ func (b *Bot) ClickElemWithScript(elem *rod.Element, opts ...ElemOptionFunc) err
 
 	_, err := elem.Timeout(time.Duration(opt.timeout)*time.Second).CancelTimeout().Eval(`(elem) => { this.click() }`, elem)
 	if err != nil {
-		log.Error().Err(err).Msg("Err: close by Eval script this.click()")
+		b.logger.Error("cannot close by Eval script this.click()", zap.Error(err))
 		return err
 	}
 
@@ -179,12 +178,12 @@ func (b *Bot) CloseIfHasPopovers(popovers ...string) int {
 		if err == nil {
 			hit += n
 		} else {
-			log.Debug().Err(err).Msg("cannot close pop")
+			b.logger.Debug("cannot close popover", zap.Error(err))
 		}
 	}
 
 	if hit != 0 {
-		log.Debug().Int("count", hit).Msg("closed popovers")
+		b.logger.Debug("closed popovers", zap.Int("count", hit))
 	}
 
 	return hit
@@ -199,7 +198,6 @@ func (b *Bot) ClosePopover(sel string) (int, error) {
 	}
 
 	if len(elems) == 0 {
-		log.Trace().Msg("no popovers found")
 		return 0, nil
 	}
 

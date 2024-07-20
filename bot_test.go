@@ -96,7 +96,7 @@ func (s *BotSuite) Test00NewBot() {
 func (s *BotSuite) Test00BotWithOptionsOnly() {
 	s.T().Parallel()
 
-	bot := NewBotWithOptionsOnly()
+	bot := NewBotWithOptionsOnly(Headless(true), WithHighlightTimes(3), WithPanicBy(PanicByDft))
 	defer bot.Cleanup()
 
 	s.Nil(bot.page)
@@ -109,7 +109,74 @@ func (s *BotSuite) Test00BotWithOptionsOnly() {
 	s.NotNil(bot.page)
 	s.NotPanics(func() {
 		bot.MustOpen(s.ts.URL)
+		bot.MustWaitLoad()
 	}, "after binding bot with browser, shouldn't panic")
+
+	// another try to bind bot again, does nothing.
+	BindBotLanucher(bot)
+
+	bot.SetPanicWith(PanicByDump)
+	// when panic by dump, pie will just print the error.
+	bot.MustElem(`div.should-not-existed`, WithTimeout(PT1Sec))
+
+	bot.SetPanicWith(PanicByLogError)
+	// only log as error
+	bot.MustElem(`div.should-not-existed`, WithTimeout(PT1Sec))
+
+	s.NotNil(bot.Browser())
+	s.Empty(bot.CookieFile())
+
+	s.Equal(3, bot.highlightTimes)
+}
+
+func (s *BotSuite) Test00BotUserMode() {
+	s.T().Parallel()
+
+	bot := NewBotUserMode()
+	defer bot.Cleanup()
+
+	bot.MustOpen(s.ts.URL)
+}
+
+func (s *BotSuite) Test00BotStealth() {
+	s.T().Parallel()
+
+	sanny := `https://bot.sannysoft.com`
+	sannyLoc := `td#chrome-result`
+
+	tests := []struct {
+		name    string
+		stealth bool
+		home    string
+		loc     string
+		wantS   string
+	}{
+		{
+			name:  "sanny-headless",
+			home:  sanny,
+			loc:   sannyLoc,
+			wantS: `missing (failed)`,
+		},
+		{
+			name:    "sanny-stealth",
+			home:    sanny,
+			loc:     sannyLoc,
+			stealth: true,
+			wantS:   `present (passed)`,
+		},
+	}
+
+	for _, tt := range tests {
+		s.T().Run("test_"+tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			bot := NewBotHeadless(StealthMode(tt.stealth))
+			bot.MustOpen(tt.home)
+
+			got := bot.MustElemAttr(tt.loc)
+			s.Equal(tt.wantS, got, tt.name)
+		})
+	}
 }
 
 func (s *BotSuite) Test01CustomPageWithUAAndLang() {
@@ -285,43 +352,53 @@ func (s *BotSuite) Test03ProxyServerByMitm() {
 	)
 
 	container := fixtures.NewContainer(context.Background(), "proxy-server", "mitmdump")
-	defer container.Clear()
+	defer func() {
+		_ = recover()
+		container.Clear()
+	}()
+
 	addr := container.URI
 	log.Printf("running proxy at: %s", addr)
 
 	containerWithAuth := fixtures.NewContainer(context.Background(), "authed-proxy-server", "mitmdump", "--set", "proxyauth=ab:cd")
-	defer containerWithAuth.Clear()
+	defer func() {
+		_ = recover()
+		containerWithAuth.Clear()
+	}()
 
 	addrAuth := containerWithAuth.URI
 	log.Printf("running proxy-auth at: %s", addrAuth)
 
 	// sleep a bit time, in case proxy is not fully loaded.
 	SleepN(2.0)
+	err := checkProxyServer(addr)
+	s.Nil(err, "proxy-server should open")
+
+	err = checkProxyServer(addrAuth)
+	s.Nil(err, "authed-proxy-server should open")
+
 	log.Printf("running test")
 
 	tests := []struct {
-		name     string
-		home     string
-		newBrw   func() (*launcher.Launcher, *rod.Browser)
-		locator  string
-		headless bool
-		wantE    bool
+		name    string
+		home    string
+		newBrw  func() (*launcher.Launcher, *rod.Browser)
+		locator string
+		wantE   bool
 	}{
 		{
-			name:     "no proxy",
-			home:     _mitmHTTPHome,
-			locator:  httploc,
-			wantE:    true,
-			headless: true,
+			name:    "no proxy",
+			home:    _mitmHTTPHome,
+			locator: httploc,
+			wantE:   true,
 			newBrw: func() (*launcher.Launcher, *rod.Browser) {
 				return NewBrowser()
 			},
 		},
 		{
-			name:     "with proxy",
-			home:     _mitmHTTPHome,
-			locator:  httploc,
-			headless: true,
+			name:    "with proxy",
+			home:    _mitmHTTPHome,
+			locator: httploc,
 			newBrw: func() (*launcher.Launcher, *rod.Browser) {
 				return NewBrowser(
 					BrowserProxy(addr),
@@ -329,11 +406,10 @@ func (s *BotSuite) Test03ProxyServerByMitm() {
 			},
 		},
 		{
-			name:     "with proxy for https",
-			home:     _mitmHTTPSHome,
-			locator:  httpsloc,
-			headless: true,
-			wantE:    true,
+			name:    "with proxy for https",
+			home:    _mitmHTTPSHome,
+			locator: httpsloc,
+			wantE:   true,
 			newBrw: func() (*launcher.Launcher, *rod.Browser) {
 				return NewBrowser(
 					BrowserProxy(addr),
@@ -341,10 +417,9 @@ func (s *BotSuite) Test03ProxyServerByMitm() {
 			},
 		},
 		{
-			name:     "with proxy for https ignore cert err",
-			home:     _mitmHTTPSHome,
-			locator:  httpsloc,
-			headless: true,
+			name:    "with proxy for https ignore cert err",
+			home:    _mitmHTTPSHome,
+			locator: httpsloc,
 			newBrw: func() (*launcher.Launcher, *rod.Browser) {
 				return NewBrowser(
 					BrowserProxy(addr),
@@ -386,9 +461,8 @@ func (s *BotSuite) Test03ProxyServerByMitm() {
 			defer bot.Cleanup()
 
 			_ = bot.Open(tt.home)
-			bot.MustWaitLoad()
+			_, err := bot.Elem(tt.locator, WithTimeout(3))
 
-			_, err := bot.Elem(tt.locator, WithTimeout(5))
 			if tt.wantE {
 				s.NotNil(err, tt.name)
 			} else {
@@ -443,18 +517,18 @@ func (s *BotSuite) Test04URLContains() {
 		wantE    bool
 	}{
 		{
-			name:     "found detail 1",
-			expected: `detail/1`,
+			name:     "found delay",
+			expected: `activate/delay`,
 		},
 		{
 			name:     "should not found detail 2",
-			expected: `detail/2`,
+			expected: `activate/detail`,
 			wantE:    true,
 		},
 	}
-	const (
-		home = "https://spa1.scrape.center/"
-	)
+
+	var home = s.ts.URL + "/activate"
+
 	for _, tt := range tests {
 		s.T().Run("test_"+tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -463,17 +537,14 @@ func (s *BotSuite) Test04URLContains() {
 			defer bot.Cleanup()
 
 			bot.MustOpen(home)
-			bot.MustDOMStable()
+			bot.MustClick(`a[href="/activate/delay"]`)
 
-			bot.MustClick(`a[href="/detail/1"]`)
-			bot.MustDOMStable()
-
-			err := bot.WaitURLContains(tt.expected, 5.0)
+			err := bot.WaitURLContains(tt.expected, 3.0)
 			if tt.wantE {
 				s.NotNil(err)
 			} else {
 				s.Nil(err)
-				s.Equal(home+"detail/1", bot.CurrentURL())
+				s.Equal(home+"/delay", bot.CurrentURL())
 			}
 		})
 	}
@@ -520,7 +591,6 @@ func (s *BotSuite) Test04ActivateLastOpenedPage() {
 			defer bot.Cleanup()
 
 			bot.MustOpen(s.ts.URL + "/activate")
-			bot.MustWaitLoad()
 
 			s.Equal("Activate", bot.page.MustInfo().Title, tt.name)
 

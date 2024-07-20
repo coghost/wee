@@ -146,6 +146,7 @@ func newUnstartedTestServer() *httptest.Server {
 <body>
 <a href="/activate/newtab" target="_blank">open in new tab</a>
 <a href="/activate/self">open in same tab</a>
+<a href="/activate/delay">open tab with delay</a>
 </body>
 </html>`))
 	})
@@ -164,6 +165,20 @@ func newUnstartedTestServer() *httptest.Server {
 	})
 
 	mux.HandleFunc("/activate/self", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head>
+<title>HelloSelf</title>
+</head>
+<body>
+<p>Hello Self</p>
+</body>
+</html>`))
+	})
+
+	mux.HandleFunc("/activate/delay", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Second * 2)
 		w.Header().Set("Content-Type", "text/html")
 		w.Write([]byte(`<!DOCTYPE html>
 <html>

@@ -39,7 +39,6 @@ type Bot struct {
 	headless       bool
 	userAgent      string
 	acceptLanguage string
-	extensions     []string
 
 	// cookies
 	withCookies  bool
@@ -293,12 +292,6 @@ func CopyAsCURLCookies(b []byte) BotOption {
 	}
 }
 
-func WithExtensionFolder(arr []string) BotOption {
-	return func(o *Bot) {
-		o.extensions = arr
-	}
-}
-
 func Headless(b bool) BotOption {
 	return func(o *Bot) {
 		o.headless = b
@@ -323,6 +316,7 @@ func setUserMode(b bool) BotOption {
 	}
 }
 
+// TrackTime tracktime shows logs with level `debug`.
 func TrackTime(b bool) BotOption {
 	return func(o *Bot) {
 		o.trackTime = b

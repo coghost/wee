@@ -2,13 +2,13 @@ package wee
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/launcher/flags"
-	"github.com/rs/zerolog/log"
 	"github.com/samber/lo"
 )
 
@@ -90,10 +90,10 @@ func newUserModeLauncher() (*launcher.Launcher, string) {
 	if err != nil {
 		s := fmt.Sprintf("%s", err)
 		if strings.Contains(s, "[launcher] Failed to get the debug url: Opening in existing browser session") {
-			fmt.Printf("%[1]s\nlaunch chrome browser failed, please make sure it is closed, and then run again\n%[1]s\n", strings.Repeat("=", 32)) //nolint
+			fmt.Printf("%[1]s\nlaunch chrome browser failed, please make sure chrome is closed, and then run again\n%[1]s\n", strings.Repeat("=", 32)) //nolint
 		}
 
-		log.Fatal().Err(err).Msg("cannot launch browser")
+		log.Fatalf("cannot launch browser: %v", err)
 	}
 
 	return launch, wsURL

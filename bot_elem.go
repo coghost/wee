@@ -11,8 +11,8 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/input"
 	"github.com/gookit/goutil/sysutil"
-	"github.com/rs/zerolog/log"
 	"github.com/thoas/go-funk"
+	"go.uber.org/zap"
 )
 
 const (
@@ -42,7 +42,7 @@ func (b *Bot) Elem(selector string, opts ...ElemOptionFunc) (*rod.Element, error
 	}
 
 	if cost := time.Since(start).Seconds(); cost > _logIfTimeout {
-		log.Debug().Float64("cost", cost).Str("selector", selector).Msg("GetElem")
+		b.logger.Debug("get elem", zap.Float64("cost", cost), zap.String("selector", selector))
 	}
 
 	return elem, nil
@@ -193,7 +193,7 @@ func (b *Bot) MustAllElemsAttrs(selector string, opts ...ElemOptionFunc) []strin
 	for _, elem := range elems {
 		v, err := b.getElementAttr(elem, opts...)
 		if err != nil {
-			log.Debug().Err(err).Msg("cannot get attr")
+			b.logger.Debug("cannot get attr", zap.String("selector", selector), zap.Error(err))
 		}
 
 		attrs = append(attrs, v)
@@ -332,7 +332,7 @@ func (b *Bot) ElementAttrMap(elem *rod.Element, opts ...ElemOptionFunc) map[stri
 	for key, attr := range opt.attrMap {
 		raw, err := b.getElementAttr(elem, WithAttr(attr))
 		if err != nil {
-			log.Error().Err(err).Msg("cannot get attr for attr map")
+			b.logger.Sugar().Warnf("cannot get attr (%s:%s), %v", key, attr, zap.Error(err))
 		}
 
 		res[key] = raw
@@ -345,7 +345,7 @@ func (b *Bot) mustNotEmpty(selector string) { //nolint:unused
 	if selector == "" {
 		const callerStackOffset = 2
 		w, i := xpretty.Caller(callerStackOffset)
-		log.Fatal().Str("file", w).Int("line", i).Msg("selector is empty")
+		b.logger.Sugar().Fatalf("selector is empty: file=%s,line=%d", w, i)
 	}
 }
 
@@ -353,7 +353,7 @@ func (b *Bot) mustNotByText(selector string) { //nolint:unused
 	if strings.Contains(selector, SEP) {
 		const callerStackOffset = 2
 		w, i := xpretty.Caller(callerStackOffset)
-		log.Fatal().Str("file", w).Int("line", i).Msg("never use selector by text in Elems")
+		b.logger.Sugar().Fatalf("never use selector by text: file=%s,line=%d", w, i)
 	}
 }
 
@@ -364,7 +364,7 @@ func (b *Bot) MustAnyElem(selectors []string, opts ...ElemOptionFunc) string {
 
 	cost := time.Since(start).Seconds()
 	if cost > _logIfTimeout {
-		log.Debug().Str("selector", sel).Str("cost", fmt.Sprintf("%.3fs", cost)).Msg("get by ensure")
+		b.logger.Sugar().Debugf("get selector:(%s) by ensure cost=%.2fs", sel, cost)
 	}
 
 	return sel
