@@ -9,6 +9,15 @@ type ScrollAsHuman struct {
 	scrollUpChance   float64
 }
 
+func NewScrollAsHuman(long, short, up float64) *ScrollAsHuman {
+	return &ScrollAsHuman{
+		enabled:          true,
+		longSleepChance:  long,
+		shortSleepChance: short,
+		scrollUpChance:   up,
+	}
+}
+
 type ElemOptions struct {
 	root   *rod.Element
 	iframe *rod.Page

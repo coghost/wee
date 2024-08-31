@@ -55,7 +55,7 @@ func (b *Bot) ElemByIndex(selector string, index int) (*rod.Element, error) {
 		return nil, err
 	}
 
-	index = refineIndex(len(elems), index)
+	index = NormalizeSliceIndex(len(elems), index)
 	if index < 0 {
 		return nil, nil
 	}

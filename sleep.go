@@ -1,11 +1,37 @@
 //nolint:mnd
 package wee
 
-import "time"
+import (
+	"math"
+	"math/rand"
+	"time"
+)
 
-// RandSleep random sleep some seconds
+// RandFloatX1k returns a random integer value between (min * 1000) and (max * 1000).
 //
-// @returns milliseconds
+// Parameters:
+//   - min: The minimum value of the range (in seconds).
+//   - max: The maximum value of the range (in seconds).
+//
+// Returns:
+//   - An integer representing milliseconds, randomly chosen between min*1000 and max*1000.
+//
+// If min equals max, it returns min * 1000 as an integer.
+// The function uses math.Round to ensure accurate conversion from seconds to milliseconds.
+func RandFloatX1k(min, max float64) int {
+	secToMill := 1000.0
+	if min == max {
+		return int(secToMill * min)
+	}
+
+	minI, maxI := int(math.Round(min*secToMill)), int(math.Round(max*secToMill))
+	x1k := minI + rand.Intn(maxI-minI)
+
+	return x1k
+}
+
+// RandSleep sleeps for a random duration between min and max seconds.
+// It returns the actual sleep duration in milliseconds.
 func RandSleep(min, max float64, msg ...string) int {
 	slept := RandFloatX1k(min, max)
 	time.Sleep(time.Duration(slept) * time.Millisecond)
@@ -13,18 +39,21 @@ func RandSleep(min, max float64, msg ...string) int {
 	return slept
 }
 
-// SleepN sleeps n~n*1.1s
+// SleepN sleeps for a random duration between n and n*1.1 seconds.
+// It returns the actual sleep duration in milliseconds.
 func SleepN(n float64) int {
 	n1 := n * 1.1
 	return RandSleep(n, n1)
 }
 
-// RandSleepPT1Ms sleeps rand(1s~2s)
+// RandSleepNap sleeps for a random duration between 1 and 2 seconds.
+// It returns the actual sleep duration in milliseconds.
 func RandSleepNap() (sleepMills int) {
 	return RandSleep(1.0, 2.0)
 }
 
-// RandSleepPT1Ms sleeps rand(0.01ms~0.1ms)
+// RandSleepPT1Ms sleeps for a random duration between 0.01 and 0.1 milliseconds.
+// It returns the actual sleep duration in milliseconds.
 func RandSleepPT1Ms() (sleepMills int) {
 	return RandSleep(0.01, 0.1)
 }

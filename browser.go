@@ -9,21 +9,29 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/launcher/flags"
+	"github.com/gookit/goutil/fsutil"
+	"github.com/k0kubun/pp/v3"
 	"github.com/samber/lo"
 )
 
 const (
-	// SlowMotionMillis default slow motion duration 500ms
+	// SlowMotionMillis is the default slow motion duration in milliseconds
 	SlowMotionMillis = 500
 )
 
+// PaintRects is a flag to show paint rectangles in the browser
 const PaintRects = "--show-paint-rects"
 
-func NewUserMode() (*launcher.Launcher, *rod.Browser) {
-	l, wsURL := newUserModeLauncher()
+func NewUserMode(opts ...BrowserOptionFunc) (*launcher.Launcher, *rod.Browser) {
+	opt := BrowserOptions{}
+	bindBrowserOptions(&opt, opts...)
+
+	lch, wsURL := newUserModeLauncher(opts...)
 	browser := rod.New().ControlURL(wsURL).MustConnect().NoDefaultDevice()
 
-	return l, browser
+	log.Printf("running in user-mode with user-data-dir:(%s)", opt.userDataDir)
+
+	return lch, browser
 }
 
 func NewBrowser(opts ...BrowserOptionFunc) (*launcher.Launcher, *rod.Browser) {
@@ -63,7 +71,7 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 	// }
 
 	if dir := opt.userDataDir; dir != "" {
-		lnchr.UserDataDir(dir)
+		lnchr.UserDataDir(fsutil.Expand(dir))
 	}
 
 	if opt.paintRects {
@@ -83,8 +91,18 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 	return lnchr
 }
 
-func newUserModeLauncher() (*launcher.Launcher, string) {
+func newUserModeLauncher(opts ...BrowserOptionFunc) (*launcher.Launcher, string) {
+	opt := BrowserOptions{}
+	bindBrowserOptions(&opt, opts...)
+
 	launch := launcher.NewUserMode()
+
+	if dir := opt.userDataDir; dir != "" {
+		launch = launch.UserDataDir(fsutil.Expand(dir))
+		pp.Println("set user-data-dir to:", dir)
+	}
+
+	launch.Leakless(opt.leakless)
 
 	wsURL, err := launch.Launch()
 	if err != nil {

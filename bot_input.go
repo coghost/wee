@@ -27,6 +27,10 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 	opt := ElemOptions{submit: false, timeout: PT10Sec, clearBeforeInput: true, endWithEscape: false, humanized: b.humanized}
 	bindElemOptions(&opt, opts...)
 
+	if opt.humanized {
+		opts = append(opts, WithTimeout(PT20Sec))
+	}
+
 	// click the input elem to trigger before input
 	_ = b.Click(sel)
 
@@ -105,8 +109,8 @@ func (b *Bot) typeAsHuman(elem *rod.Element, text string, humanized bool) error 
 	arr := NewStringSlice(text, length, true)
 
 	for _, str := range arr {
-		if err := elem.Timeout(PT10Sec * time.Second).Input(str); err != nil {
-			return err
+		if err := elem.Timeout(PT20Sec * time.Second).Input(str); err != nil {
+			return fmt.Errorf("cannot input by humanized: %w", err)
 		}
 	}
 
