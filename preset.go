@@ -19,7 +19,10 @@ const (
 )
 
 const (
+	PT1Sec  = 1
 	PT10Sec = 10
+	PT20Sec = 20
+	PT60Sec = 60
 	// PT10MilliSec a very short timeout in millisecond
 	PT10MilliSec = 0.01
 )

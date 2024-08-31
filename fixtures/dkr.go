@@ -78,13 +78,13 @@ func NewContainer(ctx context.Context, name string, args ...string) *Container {
 		vols = append(vols, m.Name)
 	}
 
-	pb := res.NetworkSettings.Ports[_containerPort][0]
+	exposed := res.NetworkSettings.Ports[_containerPort][0]
 
 	cont := &Container{
 		client:  dkr,
 		ctx:     ctx,
 		id:      resp.ID,
-		URI:     fmt.Sprintf("%s:%s", pb.HostIP, pb.HostPort),
+		URI:     fmt.Sprintf("%s:%s", exposed.HostIP, exposed.HostPort),
 		volumes: vols,
 	}
 

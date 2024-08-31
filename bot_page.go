@@ -54,12 +54,17 @@ func (b *Bot) CustomizePage() {
 		b.page = b.page.MustSetUserAgent(ov)
 	}
 
+	// display := NewDefaultDisplay()
+	// if b.display != nil {
+	// 	display = b.display
+	// }
 	// w, h := 1280, 768
-	// b.page = b.page.MustSetWindow(0, 0, w, h)
+	// b.page = b.page.MustSetWindow(display.Left, display.Top, display.Width, display.Height)
 	// vw, vh := w, 728
-	// b.page = b.page.MustSetViewport(vw, vh, 0.0, false)
+	// b.page = b.page.MustSetViewport(display.ViewOffsetWidth, display.ViewOffsetHeight, 0.0, false)
 
 	err := b.page.SetWindow(&proto.BrowserBounds{
+		Left:        &b.left,
 		WindowState: proto.BrowserWindowStateNormal,
 	})
 	if err != nil {
@@ -78,23 +83,24 @@ func (b *Bot) MustOpen(uri string) {
 		b.cookieFile != "" ||
 		len(b.copyAsCURLCookies) != 0
 
-	b.logger.Debug("open page", zap.Bool("cookies", withCookies))
+	b.logger.Info("open page", zap.Bool("cookies", withCookies))
 	// not with cookies, return
 	if !withCookies {
 		b.pie(b.Open(uri))
 		return
 	}
 
-	b.pie(b.OpenWithCookies(uri))
+	b.pie(b.OpenAndSetCookies(uri))
+	b.pie(b.Open(uri))
 }
 
-// OpenWithCookies open uri with cookies.
+// OpenAndSetCookies open uri with cookies.
 //
 // typically with following steps:
 //   - open it's domain `https://xxx.com`
 //   - load cookies
 //   - open uri
-func (b *Bot) OpenWithCookies(uri string, timeouts ...time.Duration) error {
+func (b *Bot) OpenAndSetCookies(uri string, timeouts ...time.Duration) error {
 	up, err := url.Parse(uri)
 	if err != nil {
 		return err
@@ -105,18 +111,28 @@ func (b *Bot) OpenWithCookies(uri string, timeouts ...time.Duration) error {
 		return err
 	}
 
+	if b.cookieFile == "" {
+		_ = b.ensureCookieFile()
+		b.logger.Sugar().Infof("use cookie file %s", b.cookieFile)
+	}
+
 	nodes, err := b.LoadCookies(b.cookieFile)
 	if err != nil {
-		b.logger.Info("cannot load cookies", zap.Error(err))
+		b.logger.Info("cannot load cookies", zap.String("cookie", b.cookieFile), zap.Error(err))
 	}
 
 	if len(nodes) != 0 {
-		if err = b.page.SetCookies(nodes); err != nil {
+		b.logger.Sugar().Infof("total got cookie-nodes: %d", len(nodes))
+		// set cookies to browser/page
+		// if err = b.page.SetCookies(nodes); err != nil {
+		// 	b.logger.Error("set cookies failed", zap.Error(err))
+		// }
+		if err = b.browser.SetCookies(nodes); err != nil {
 			b.logger.Error("set cookies failed", zap.Error(err))
 		}
 	}
 
-	return b.Open(uri)
+	return nil
 }
 
 func (b *Bot) Open(url string, timeouts ...time.Duration) error {

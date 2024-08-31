@@ -8,6 +8,8 @@ type BrowserOptions struct {
 	noDefaultDevice bool
 	incognito       bool
 
+	leakless bool
+
 	ignoreCertErrors bool
 
 	slowMotionDelay int
@@ -89,5 +91,11 @@ func BrowserIncognito(b bool) BrowserOptionFunc {
 func BrowserExtensions(extArr ...string) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.extensions = extArr
+	}
+}
+
+func LaunchLeakless(b bool) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.leakless = b
 	}
 }

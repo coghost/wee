@@ -57,7 +57,7 @@ func main() {
 	val := bot.MustElemAttr(selectors.ResultsCount)
 	pp.Println(val)
 
-	bot.MustClickOneByOne(selectors.Filters[0], fmt.Sprintf(selectors.Filters[1], "0"))
+	bot.MustClickSequentially(selectors.Filters[0], fmt.Sprintf(selectors.Filters[1], "0"))
 
 	for i := 0; i < 0; i++ {
 		pageNum := bot.MustElemAttr(selectors.PageNum)

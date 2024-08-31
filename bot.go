@@ -1,6 +1,7 @@
 package wee
 
 import (
+	"log"
 	"time"
 
 	"github.com/coghost/xpretty"
@@ -11,6 +12,11 @@ import (
 	"github.com/gookit/goutil/strutil"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
+)
+
+const (
+	_uniqueIDLen   = 16
+	_browserChrome = "Google Chrome"
 )
 
 type Bot struct {
@@ -29,6 +35,8 @@ type Bot struct {
 	prevPage *rod.Page
 	root     *rod.Element
 
+	left int
+
 	isLaunched       bool
 	withPageCreation bool
 	humanized        bool
@@ -39,8 +47,12 @@ type Bot struct {
 	headless       bool
 	userAgent      string
 	acceptLanguage string
-	extensions     []string
+	userDataDir    string
 
+	// when in userMode, by default will skip cleanup, we can set forceCleanup to do the cleanup.
+	forceCleanup bool
+	// clearCookies used when we want to clear all cookies in user-mode
+	clearCookies bool
 	// cookies
 	withCookies  bool
 	cookieFolder string
@@ -87,20 +99,38 @@ func NewBot(options ...BotOption) *Bot {
 	return bot
 }
 
+// NewBotWithOptionsOnly creates a new Bot instance with options only, without creating a page.
 func NewBotWithOptionsOnly(options ...BotOption) *Bot {
 	options = append(options, WithPage(false))
 	return NewBot(options...)
 }
 
-// BindBotLanucher launches browser and page for bot.
-// this is used when we create bot first, and launch browser at somewhere else.
+// BindBotLanucher launches the browser and page for the bot.
+// This is used when we create a bot first and launch the browser elsewhere.
 func BindBotLanucher(bot *Bot, options ...BotOption) {
 	if bot.isLaunched {
 		return
 	}
 
-	l, brw := NewBrowser()
-	options = append(options, Launcher(l), Browser(brw), WithPage(true))
+	var (
+		lnchr *launcher.Launcher
+		brw   *rod.Browser
+	)
+
+	if bot.userMode {
+		if bot.forceCleanup {
+			err := ForceQuitBrowser(_browserChrome, 5) //nolint: mnd
+			if err != nil {
+				log.Fatalf("cannot close chrome: %v", err)
+			}
+		}
+
+		lnchr, brw = NewUserMode(LaunchLeakless(bot.forceCleanup), BrowserUserDataDir(bot.userDataDir))
+	} else {
+		lnchr, brw = NewBrowser()
+	}
+
+	options = append(options, Launcher(lnchr), Browser(brw), WithPage(true))
 	bindBotOptions(bot, options...)
 
 	resetIfHeadless(bot)
@@ -115,8 +145,8 @@ func resetIfHeadless(bot *Bot) {
 	}
 }
 
-// NewBotDefault creates a bot with a default launcher/browser,
-// the launcher/browser passed in will be ignored.
+// NewBotDefault creates a bot with a default launcher/browser.
+// The launcher/browser passed in will be ignored.
 func NewBotDefault(options ...BotOption) *Bot {
 	l, brw := NewBrowser()
 	options = append(options, Launcher(l), Browser(brw))
@@ -140,10 +170,10 @@ func NewBotForDebug(options ...BotOption) *Bot {
 	return NewBot(options...)
 }
 
-// NewBotUserMode calls to go-rod NewUserMode, connects to system chrome browser
+// NewBotUserMode creates a bot that connects to the system Chrome browser.r
 func NewBotUserMode(options ...BotOption) *Bot {
 	l, brw := NewUserMode()
-	options = append(options, Launcher(l), Browser(brw), setUserMode(true))
+	options = append(options, Launcher(l), Browser(brw), UserMode(true))
 
 	return NewBot(options...)
 }
@@ -154,22 +184,55 @@ func (b *Bot) initialize() {
 
 	b.highlightTimes = 1
 	b.SetTimeout()
-	b.UniqueID = strutil.RandomCharsV3(16) //nolint:mnd
+	b.UniqueID = strutil.RandomCharsV3(_uniqueIDLen)
 }
 
+// BlockInCleanUp performs cleanup and blocks execution.
 func (b *Bot) BlockInCleanUp() {
 	defer b.Cleanup()
 	defer Blocked()
 }
 
+// Cleanup closes the opened page and quits the browser in non-userMode.
+// In userMode, by default it will skip cleanup.
 func (b *Bot) Cleanup() {
-	if b.userMode {
-		b.logger.Debug("runs with user mode, skip cleanup")
+	if !b.isLaunched {
 		return
+	}
+
+	// non user mode, close and clean.
+	if !b.userMode {
+		b.browser.MustClose()
+		b.launcher.Cleanup()
+
+		return
+	}
+
+	// by default is not force mode, just return.
+	if !b.forceCleanup {
+		b.logger.Info("runs in user mode, skip cleanup browser, you should call `bot.Page().Close()` manually.")
+		return
+	}
+
+	// in case cookie matters the crawler result.
+	if b.clearCookies {
+		b.ClearStorageCookies()
+
+		_ = RandSleepNap()
 	}
 
 	b.browser.MustClose()
 	b.launcher.Cleanup()
+}
+
+// ClearStorageCookies calls StorageClearCookies, clears all history cookies.
+func (b *Bot) ClearStorageCookies() {
+	err := b.browser.SetCookies(nil)
+	if err != nil {
+		b.logger.Error("cannot clear cookies", zap.Error(err))
+	} else {
+		b.logger.Info("cleared cookies before quit.")
+	}
 }
 
 func (b *Bot) SetTimeout() {
@@ -252,6 +315,12 @@ func AcceptLanguage(s string) BotOption {
 	}
 }
 
+func UserDataDir(s string) BotOption {
+	return func(o *Bot) {
+		o.userDataDir = s
+	}
+}
+
 func WithHighlightTimes(i int) BotOption {
 	return func(o *Bot) {
 		o.highlightTimes = i
@@ -293,9 +362,9 @@ func CopyAsCURLCookies(b []byte) BotOption {
 	}
 }
 
-func WithExtensionFolder(arr []string) BotOption {
+func UserMode(b bool) BotOption {
 	return func(o *Bot) {
-		o.extensions = arr
+		o.userMode = b
 	}
 }
 
@@ -317,12 +386,19 @@ func StealthMode(b bool) BotOption {
 	}
 }
 
-func setUserMode(b bool) BotOption {
+func ForceCleanup(b bool) BotOption {
 	return func(o *Bot) {
-		o.userMode = b
+		o.forceCleanup = b
 	}
 }
 
+func ClearCookies(b bool) BotOption {
+	return func(o *Bot) {
+		o.clearCookies = b
+	}
+}
+
+// TrackTime tracktime shows logs with level `debug`.
 func TrackTime(b bool) BotOption {
 	return func(o *Bot) {
 		o.trackTime = b
@@ -346,5 +422,12 @@ func WithPopovers(popovers ...string) BotOption {
 	return func(o *Bot) {
 		o.popovers = append(o.popovers, popovers...)
 		o.popovers = lo.Uniq(o.popovers)
+	}
+}
+
+// WithLeftPosition sets the left position of the browser window.
+func WithLeftPosition(i int) BotOption {
+	return func(o *Bot) {
+		o.left = i
 	}
 }

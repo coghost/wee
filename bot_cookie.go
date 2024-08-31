@@ -20,17 +20,46 @@ var ErrEmptyCookieStr = errors.New("no cookie str found")
 
 var cookieFolder = fsutil.Expand(".cookies")
 
+// DumpCookies saves the current cookies of the bot's page to a file on disk.
+//
+// This function performs the following operations:
+//
+// 1. Ensures the cookie file exists:
+//   - If b.cookieFile is empty, it generates a filename based on the current URL.
+//   - Creates any necessary parent directories for the cookie file.
+//
+// 2. Retrieves and marshals cookies:
+//   - Calls b.page.MustCookies() to get all cookies from the current page.
+//   - Marshals these cookies into JSON format.
+//
+// 3. Writes cookies to file:
+//   - Opens or creates the cookie file with 0644 permissions (rw-r--r--).
+//   - Writes the JSON-encoded cookie data to the file.
+//
+// Returns:
+//   - string: The full path to the cookie file where the cookies were saved.
+//   - error: An error if any of the following occur:
+//   - Failure to ensure the cookie file (e.g., permission issues)
+//   - Failure to marshal cookies to JSON
+//   - Failure to write to the cookie file
+//
+// Usage:
+//
+//	filepath, err := bot.DumpCookies()
+//	if err != nil {
+//	    log.Fatalf("Failed to dump cookies: %v", err)
+//	}
+//	fmt.Printf("Cookies saved to: %s\n", filepath)
+//
+// Notes:
+//   - This function is useful for persisting session data between bot runs.
+//   - The saved cookies can be later loaded using the LoadCookies method.
+//   - If b.cookieFile is not set, the function will automatically generate a filename
+//     based on the current URL, stored in the default or specified cookie folder.
+//   - Ensure the bot has necessary permissions to write to the cookie directory.
 func (b *Bot) DumpCookies() (string, error) {
-	if b.cookieFile == "" {
-		file, err := b.uniqueNameByURL(b.CurrentURL())
-		if err != nil {
-			return "", err
-		}
-
-		b.cookieFile = file
-	}
-
-	if err := fsutil.MkParentDir(b.cookieFile); err != nil {
+	err := b.ensureCookieFile()
+	if err != nil {
 		return "", err
 	}
 
@@ -49,6 +78,24 @@ func (b *Bot) DumpCookies() (string, error) {
 	return b.cookieFile, nil
 }
 
+// ensureCookieFile create cookie file if not existed.
+func (b *Bot) ensureCookieFile() error {
+	if b.cookieFile == "" {
+		file, err := b.createCookieFilenameFromURL(b.CurrentURL())
+		if err != nil {
+			return err
+		}
+
+		b.cookieFile = file
+	}
+
+	if err := fsutil.MkParentDir(b.cookieFile); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (b *Bot) getRawCookies(filepath string) ([]byte, error) {
 	// 1. check if copy as cURL
 	if len(b.copyAsCURLCookies) != 0 {
@@ -57,7 +104,7 @@ func (b *Bot) getRawCookies(filepath string) ([]byte, error) {
 
 	// 2. filepath or auto get by URL
 	if filepath == "" {
-		v, err := b.uniqueNameByURL(b.CurrentURL())
+		v, err := b.createCookieFilenameFromURL(b.CurrentURL())
 		if err != nil {
 			return nil, err
 		}
@@ -72,6 +119,52 @@ func (b *Bot) getRawCookies(filepath string) ([]byte, error) {
 	return os.ReadFile(filepath)
 }
 
+// LoadCookies loads cookies from a file or from previously stored cURL data and converts them
+// into a format usable by the bot.
+//
+// Parameters:
+//   - filepath: string - The path to the cookie file. If empty, the function will attempt to
+//     generate a filename based on the bot's current URL.
+//
+// Returns:
+//   - []*proto.NetworkCookieParam: A slice of NetworkCookieParam objects representing the loaded cookies.
+//   - error: An error if the loading process fails at any step.
+//
+// Function behavior:
+// 1. Retrieves raw cookie data:
+//   - If copyAsCURLCookies is not empty, it uses this data.
+//   - Otherwise, it reads from the specified file or an auto-generated file based on the current URL.
+//
+// 2. Determines the format of the cookie data:
+//   - If the data is in JSON format, it parses it as proto.NetworkCookie objects.
+//   - If not JSON, it assumes cURL format and parses accordingly.
+//
+// 3. For JSON format:
+//   - Unmarshals the data into proto.NetworkCookie objects.
+//   - Converts these into proto.NetworkCookieParam objects, filling in additional fields.
+//
+// 4. For cURL format:
+//   - Calls ParseCURLCookies to handle the conversion.
+//
+// Usage:
+//
+//	cookies, err := bot.LoadCookies("path/to/cookies.json")
+//	if err != nil {
+//	    log.Fatalf("Failed to load cookies: %v", err)
+//	}
+//	// Use the cookies with the bot...
+//
+// Notes:
+//   - This function is flexible and can handle both JSON-formatted cookie files (typically saved
+//     by DumpCookies) and cURL-formatted cookie strings.
+//   - When loading from a file, ensure the bot has read permissions for the cookie file.
+//   - If filepath is empty and the bot can't determine the current URL, this will result in an error.
+//   - The returned cookies are in a format ready to be used with the bot's page or browser instance.
+//   - Any parsing or file reading errors will be returned, allowing the caller to handle them appropriately.
+//
+// See also:
+// - DumpCookies: For saving cookies to a file.
+// - ParseCURLCookies: For the specific handling of cURL-formatted cookie strings.
 func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) {
 	raw, err := b.getRawCookies(filepath)
 	if err != nil {
@@ -81,7 +174,7 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 	if !IsJSON(string(raw)) {
 		// non json format, means from cURL
 		// parse as cURL
-		return ParseCopyAsCURLAsCookie(string(raw))
+		return ParseCURLCookies(string(raw))
 	}
 
 	// if not copyAsCURL cookies, try parse with json format.
@@ -116,7 +209,7 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 	return nodes, nil
 }
 
-func (b *Bot) uniqueNameByURL(uri string) (string, error) {
+func (b *Bot) createCookieFilenameFromURL(uri string) (string, error) {
 	if uri == "" {
 		uri = b.CurrentURL()
 	}
@@ -133,16 +226,31 @@ func (b *Bot) uniqueNameByURL(uri string) (string, error) {
 	return filepath, nil
 }
 
-func (b *Bot) GetCopyAsCURLCookie(filePath string) ([]*proto.NetworkCookieParam, error) {
+func (b *Bot) ParseCURLCookiesFromFile(filePath string) ([]*proto.NetworkCookieParam, error) {
 	raw, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	return ParseCopyAsCURLAsCookie(string(raw))
+	return ParseCURLCookies(string(raw))
 }
 
-func ParseCopyAsCURLAsCookie(raw string) ([]*proto.NetworkCookieParam, error) {
+// ParseCURLCookies converts a cURL-formatted cookie string into NetworkCookieParam objects.
+//
+// It extracts cookies from the "Cookie" header in the cURL string, parses each cookie,
+// and creates NetworkCookieParam objects with appropriate attributes based on the URL.
+//
+// Parameters:
+//   - raw: string - The raw cURL-formatted cookie string.
+//
+// Returns:
+//   - []*proto.NetworkCookieParam: Slice of parsed cookie objects.
+//   - error: Error if parsing fails or no cookies are found.
+//
+// Usage:
+//
+//	cookies, err := ParseCURLCookies(curlString)
+func ParseCURLCookies(raw string) ([]*proto.NetworkCookieParam, error) {
 	curl, err := uncurl.NewString(raw)
 	if err != nil {
 		return nil, fmt.Errorf("cannot new copy as curl: %w", err)

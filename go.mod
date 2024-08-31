@@ -13,13 +13,13 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/go-rod/rod v0.116.0
 	github.com/go-rod/stealth v0.4.9
-	github.com/gookit/goutil v0.6.15
+	github.com/gookit/goutil v0.6.16
 	github.com/jrefior/uncurl v0.0.0-20200216180557-8cdd106bc45f
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/pterm/pterm v0.12.79
 	github.com/remeh/sizedwaitgroup v1.0.0
-	github.com/rs/zerolog v1.33.0
 	github.com/samber/lo v1.39.0
+	github.com/shirou/gopsutil/v3 v3.24.1
 	github.com/spf13/cast v1.6.0
 	github.com/stretchr/testify v1.9.0
 	github.com/thoas/go-funk v0.9.3
@@ -45,6 +45,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-playground/validator/v10 v10.10.1 // indirect
 	github.com/goccy/go-yaml v1.11.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -54,6 +55,7 @@ require (
 	github.com/hablullah/go-juliandays v1.0.0 // indirect
 	github.com/jalaali/go-jalaali v0.0.0-20210801064154-80525e88d958 // indirect
 	github.com/lithammer/fuzzysearch v1.1.8 // indirect
+	github.com/lufia/plan9stats v0.0.0-20231016141302-07b5767bb0ed // indirect
 	github.com/magefile/mage v1.15.0 // indirect
 	github.com/markusmobius/go-dateparser v1.2.2 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -67,13 +69,18 @@ require (
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/rs/zerolog v1.33.0 // indirect
+	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/tetratelabs/wazero v1.7.2 // indirect
 	github.com/tidwall/gjson v1.17.1 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tj/go-naturaldate v1.3.0 // indirect
+	github.com/tklauser/go-sysconf v0.3.13 // indirect
+	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/wasilibs/go-re2 v1.5.3 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/ysmood/fetchup v0.2.4 // indirect
@@ -81,6 +88,7 @@ require (
 	github.com/ysmood/got v0.40.0 // indirect
 	github.com/ysmood/gson v0.7.3 // indirect
 	github.com/ysmood/leakless v0.8.0 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0 // indirect
 	go.opentelemetry.io/otel v1.28.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.28.0 // indirect
@@ -92,8 +100,8 @@ require (
 	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8 // indirect
 	golang.org/x/mod v0.18.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.21.0 // indirect
-	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/sys v0.22.0 // indirect
+	golang.org/x/term v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.22.0 // indirect
