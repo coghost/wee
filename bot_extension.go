@@ -10,11 +10,22 @@ import (
 	"github.com/gookit/goutil/fsutil"
 )
 
-// NewChromeExtension will create two files from line, and save to savePath
-//   - background.js
-//   - manifest.json
+// NewChromeExtension creates a Chrome extension for proxy configuration.
 //
-// line format is: "host:port:username:password:<OTHER>"
+// Parameters:
+//   - line: Proxy info string in format "host:port:username:password:<OTHER>"
+//   - savePath: Base directory to save the extension files
+//
+// Returns:
+//   - string: Path to the created extension directory
+//   - error: nil if successful, error otherwise
+//
+// It generates background.js and manifest.json in a subdirectory named after the proxy ID.
+// The proxy ID is derived from the host or username for 'superproxy' types.
+//
+// Example:
+//
+//	extDir, err := NewChromeExtension("192.168.1.1:8080:user:pass", "/path/to/extensions")
 func NewChromeExtension(line, savePath string) (string, error) {
 	proxyJS := `var config = {
   mode: 'fixed_servers',

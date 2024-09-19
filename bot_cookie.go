@@ -16,9 +16,21 @@ import (
 	"github.com/jrefior/uncurl"
 )
 
-var ErrEmptyCookieStr = errors.New("no cookie str found")
+const (
+	_defaultCookieFolder = ".cookies"
+	// File permissions
+	_cookieFilePermissions fs.FileMode = 0644
 
-var cookieFolder = fsutil.Expand(".cookies")
+	// HTTP schemes
+	_schemeHTTP  = "http"
+	_schemeHTTPS = "https"
+
+	// HTTP ports
+	_portHTTP  = 80
+	_portHTTPS = 443
+)
+
+var ErrEmptyCookieStr = errors.New("no cookie str found")
 
 // DumpCookies saves the current cookies of the bot's page to a file on disk.
 //
@@ -68,9 +80,7 @@ func (b *Bot) DumpCookies() (string, error) {
 		return "", fmt.Errorf("cannot marshal cookies: %w", err)
 	}
 
-	var mode fs.FileMode = 0o644
-
-	err = os.WriteFile(b.cookieFile, content, mode)
+	err = os.WriteFile(b.cookieFile, content, _cookieFilePermissions)
 	if err != nil {
 		return "", fmt.Errorf("cannot save file: %w", err)
 	}
@@ -209,6 +219,9 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 	return nodes, nil
 }
 
+// createCookieFilenameFromURL generates a cookie filename based on the given URL.
+// If no URL is provided, it uses the bot's current URL.
+// Returns the full filepath for the cookie file and any error encountered.
 func (b *Bot) createCookieFilenameFromURL(uri string) (string, error) {
 	if uri == "" {
 		uri = b.CurrentURL()
@@ -220,12 +233,15 @@ func (b *Bot) createCookieFilenameFromURL(uri string) (string, error) {
 	}
 
 	filename := fmt.Sprintf("%s_%s.cookies", u.Scheme, u.Host)
-	folder := StrAorB(b.cookieFolder, cookieFolder)
+	folder := StrAorB(b.cookieFolder, _defaultCookieFolder)
 	filepath := filepath.Join(folder, filename)
 
 	return filepath, nil
 }
 
+// ParseCURLCookiesFromFile reads a file containing cURL-formatted cookies,
+// parses the content, and returns NetworkCookieParam objects.
+// It returns an error if the file cannot be read or parsed.
 func (b *Bot) ParseCURLCookiesFromFile(filePath string) ([]*proto.NetworkCookieParam, error) {
 	raw, err := os.ReadFile(filePath)
 	if err != nil {
@@ -276,11 +292,11 @@ func ParseCURLCookies(raw string) ([]*proto.NetworkCookieParam, error) {
 
 		arr := strings.Split(pair, "=")
 		httpOnly := true
-		port := 80
+		port := _portHTTP
 
-		if uriQuery.Scheme == "https" {
+		if uriQuery.Scheme == _schemeHTTPS {
 			httpOnly = false
-			port = 443
+			port = _portHTTPS
 		}
 
 		ckObj := &proto.NetworkCookieParam{
@@ -298,6 +314,9 @@ func ParseCURLCookies(raw string) ([]*proto.NetworkCookieParam, error) {
 	return nodes, nil
 }
 
+// getHeader retrieves the values for a given header key from an http.Header object.
+// It checks for both the original key and its lowercase version.
+// Returns a slice of string values associated with the header key.
 func getHeader(header http.Header, key string) []string {
 	cookieStr, b := header[key]
 	if b {
@@ -307,6 +326,9 @@ func getHeader(header http.Header, key string) []string {
 	return header[strings.ToLower(key)]
 }
 
+// flattenNodes converts a slice of NetworkCookieParam objects into a slice of strings,
+// where each string is in the format "name=value".
+// Returns a slice of strings representing the flattened cookie data.
 func flattenNodes(nodes []*proto.NetworkCookieParam) []string {
 	got := []string{}
 	for _, node := range nodes {

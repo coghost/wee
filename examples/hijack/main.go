@@ -1,20 +1,19 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"net/url"
 
 	"github.com/coghost/wee"
-	"github.com/coghost/xlog"
+	"github.com/coghost/zlog"
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"go.uber.org/zap"
 )
 
 func main() {
-	xlog.InitLogDebug()
-
+	logger := zlog.MustNewZapLogger()
 	ua := `Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36`
 
 	bot := wee.NewBotWithOptionsOnly(
@@ -22,6 +21,7 @@ func main() {
 		wee.UserAgent(ua),
 		wee.AcceptLanguage("zh_CN"),
 		wee.WithCookies(false),
+		wee.Logger(logger),
 	)
 	defer bot.Cleanup()
 
@@ -33,15 +33,15 @@ func main() {
 		"*getPositionList",
 	}, proto.NetworkResourceTypeXHR, func(ctx *rod.Hijack) {
 		body := ctx.Request.JSONBody()
-		fmt.Println(body.String())
+		logger.Info("Request body", zap.Any("body", body.String()))
 		_ = ctx.LoadResponse(http.DefaultClient, true)
 		raw := ctx.Response.Body()
-		fmt.Println(raw)
+		logger.Info("Response body", zap.String("body", raw))
 	}, true)
 
 	bot.MustOpen("https://talent.pingan.com/recruit/social.html")
 	bot.Page().MustWaitDOMStable()
-	fmt.Println("dom is ready.")
+	logger.Info("DOM is ready")
 
 	<-wait
 }

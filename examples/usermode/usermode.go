@@ -1,15 +1,13 @@
 package main
 
 import (
-	"log"
-
 	"github.com/coghost/wee"
-	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
+	"github.com/coghost/zlog"
 )
 
 func main() {
-	xlog.InitLogDebug()
+	log := zlog.MustNewZapLogger()
 	xpretty.InitializeWithColor()
 
 	bot := wee.NewBotUserMode()
@@ -29,13 +27,13 @@ func main() {
 	sel := bot.MustAnyElem([]string{results, noResults})
 
 	if sel == noResults {
-		log.Print("no results found")
+		log.Info("no results found")
 		return
 	}
 
 	elems, err := bot.Elems(results)
 	if err != nil {
-		log.Printf("cannot get results: %v", err)
+		log.Sugar().Infof("cannot get results: %v", err)
 	}
 
 	for _, elem := range elems {

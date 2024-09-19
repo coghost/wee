@@ -7,33 +7,26 @@ import (
 	"time"
 )
 
-// RandFloatX1k returns a random integer value between (min * 1000) and (max * 1000).
-//
-// Parameters:
-//   - min: The minimum value of the range (in seconds).
-//   - max: The maximum value of the range (in seconds).
-//
-// Returns:
-//   - An integer representing milliseconds, randomly chosen between min*1000 and max*1000.
-//
-// If min equals max, it returns min * 1000 as an integer.
-// The function uses math.Round to ensure accurate conversion from seconds to milliseconds.
-func RandFloatX1k(min, max float64) int {
+// RandFloatX1k converts a range of seconds to random milliseconds.
+// Returns an integer between minSec*1000 and maxSec*1000.
+// If minSec equals maxSec, it returns minSec * 1000.
+// Uses math.Round for accurate conversion.
+func RandFloatX1k(minSec, maxSec float64) int {
 	secToMill := 1000.0
-	if min == max {
-		return int(secToMill * min)
+	if minSec == maxSec {
+		return int(secToMill * minSec)
 	}
 
-	minI, maxI := int(math.Round(min*secToMill)), int(math.Round(max*secToMill))
+	minI, maxI := int(math.Round(minSec*secToMill)), int(math.Round(maxSec*secToMill))
 	x1k := minI + rand.Intn(maxI-minI)
 
 	return x1k
 }
 
-// RandSleep sleeps for a random duration between min and max seconds.
-// It returns the actual sleep duration in milliseconds.
-func RandSleep(min, max float64, msg ...string) int {
-	slept := RandFloatX1k(min, max)
+// RandSleep sleeps for a random duration between minSec and maxSec seconds.
+// Returns the actual sleep duration in milliseconds.
+func RandSleep(minSec, maxSec float64, msg ...string) int {
+	slept := RandFloatX1k(minSec, maxSec)
 	time.Sleep(time.Duration(slept) * time.Millisecond)
 
 	return slept

@@ -83,7 +83,7 @@ func (b *Bot) MustOpen(uri string) {
 		b.cookieFile != "" ||
 		len(b.copyAsCURLCookies) != 0
 
-	b.logger.Info("open page", zap.Bool("cookies", withCookies))
+	b.logger.Debug("open page", zap.Bool("cookies", withCookies))
 	// not with cookies, return
 	if !withCookies {
 		b.pie(b.Open(uri))
