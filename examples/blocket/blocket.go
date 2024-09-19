@@ -6,9 +6,9 @@ import (
 	"fmt"
 
 	"github.com/coghost/wee"
-	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
-	"github.com/k0kubun/pp/v3"
+	"github.com/coghost/zlog"
+	"go.uber.org/zap"
 )
 
 type Settings struct {
@@ -32,7 +32,7 @@ var blocket = Settings{
 }
 
 func main() {
-	xlog.InitLogDebug()
+	logger := zlog.MustNewZapLogger()
 	xpretty.InitializeWithColor()
 
 	selectors := blocket
@@ -41,6 +41,7 @@ func main() {
 		wee.WithPopovers(selectors.Popovers...),
 		wee.WithPanicBy(wee.PanicByDump),
 		wee.WithHighlightTimes(1),
+		wee.Logger(logger),
 	)
 
 	defer bot.Cleanup()
@@ -50,36 +51,34 @@ func main() {
 
 	bot.MustAcceptCookies(selectors.Popovers...)
 
-	// bot.MustClickElem(`div.all-categories span.more`, wee.WithClickByScript(true))
-	// bot.MustClickAndWait(`div.title a[href$="juridik/"] label`, wee.WithClickByScript(true))
 	bot.ClickWithScript(`div.title a[href$="juridik/"] label`)
 
 	val := bot.MustElemAttr(selectors.ResultsCount)
-	pp.Println(val)
+	logger.Info("Results count", zap.String("count", val))
 
 	bot.MustClickSequentially(selectors.Filters[0], fmt.Sprintf(selectors.Filters[1], "0"))
 
 	for i := 0; i < 0; i++ {
 		pageNum := bot.MustElemAttr(selectors.PageNum)
-		pp.Println("current page", pageNum)
+		logger.Info("Current page", zap.String("page", pageNum))
 
-		results := bot.MustElemsForAllSelectors(selectors.HasResults)
-		pp.Println("total jobs", len(results))
+		results := bot.MustElemsForSelectors(selectors.HasResults)
+		logger.Info("Total jobs", zap.Int("count", len(results)))
 
-		titles := bot.MustAllElemsAttrs(selectors.HasResults[0], wee.WithAttr("href"))
-		pp.Println(titles)
+		titles := bot.MustAllElemAttrs(selectors.HasResults[0], wee.WithAttr("href"))
+		logger.Info("Titles", zap.Any("titles", titles))
 
-		elems := bot.MustElemsForAllSelectors(selectors.HasResults)
+		elems := bot.MustElemsForSelectors(selectors.HasResults)
 		res := bot.AllElementsAttrMap(elems, wee.WithAttrMap(map[string]string{
 			"url":   "href",
 			"title": "",
 			"class": "class",
 		}))
-		pp.Println(res)
+		logger.Info("Results", zap.Any("results", res))
 
 		button, err := bot.Elem(selectors.NextPage, wee.WithTimeout(wee.NapToSec))
 		if errors.Is(err, context.DeadlineExceeded) {
-			pp.Println("no more next page button found")
+			logger.Info("No more next page button found")
 			bot.MustScrollToBottom()
 
 			break
@@ -89,5 +88,5 @@ func main() {
 	}
 
 	url := bot.CurrentURL()
-	pp.Println(url)
+	logger.Info("Final URL", zap.String("url", url))
 }

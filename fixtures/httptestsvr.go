@@ -216,6 +216,228 @@ func newUnstartedTestServer() *httptest.Server {
 		}
 	})
 
+	// Add the new dynamic content endpoint
+	mux.HandleFunc("/dynamic", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+            <html>
+                <body>
+                    <div id="initial-content">Initial Content</div>
+                    <script>
+                        setTimeout(function() {
+                            var div = document.createElement('div');
+                            div.id = 'dynamic-content';
+                            div.textContent = 'Dynamic Content Loaded';
+                            document.body.appendChild(div);
+                        }, 1000);
+                    </script>
+                </body>
+            </html>
+        `))
+	})
+
+	// Add the new slow-load endpoint
+	mux.HandleFunc("/slow-load", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(2 * time.Second) // Simulate a slow load
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+            <html>
+                <body>
+                    <div id="loaded-content">Slow Loaded Content</div>
+                </body>
+            </html>
+        `))
+	})
+
+	mux.HandleFunc("/click_test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `
+        <button id="clickme">Click Me</button>
+        <div id="clicked" style="display:none;">Clicked</div>
+        <button id="delayed-button">Delayed Button</button>
+        <div id="delayed-result" style="display:none;">Delayed Result</div>
+        <button id="button1">Button 1</button>
+        <button id="button2">Button 2</button>
+        <button id="button3">Button 3</button>
+        <div id="all-clicked" style="display:none;">All Clicked</div>
+        <button id="offscreen-button" style="position:absolute;left:-9999px;">Offscreen</button>
+        <input id="input-field" type="text">
+        <div id="input-submitted" style="display:none;">Input Submitted</div>
+        <button id="js-only-button">JS Only Button</button>
+        <div id="js-clicked" style="display:none;">JS Clicked</div>
+        <script>
+            document.getElementById("clickme").addEventListener("click", function() {
+                document.getElementById("clicked").style.display = "block";
+            });
+            document.getElementById("delayed-button").addEventListener("click", function() {
+                setTimeout(() => {
+                    document.getElementById("delayed-result").style.display = "block";
+                }, 1000);
+            });
+            let clicked = 0;
+            ["button1", "button2", "button3"].forEach(id => {
+                document.getElementById(id).addEventListener("click", function() {
+                    clicked++;
+                    if (clicked === 3) {
+                        document.getElementById("all-clicked").style.display = "block";
+                    }
+                });
+            });
+            document.getElementById("input-field").addEventListener("keypress", function(e) {
+                if (e.key === "Enter") {
+                    document.getElementById("input-submitted").style.display = "block";
+                }
+            });
+            document.getElementById("js-only-button").addEventListener("click", function() {
+                document.getElementById("js-clicked").style.display = "block";
+            });
+        </script>
+    `)
+	})
+
+	mux.HandleFunc("/cookie_test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+				<button id="accept-cookies">Accept Cookies</button>
+				<button id="accept-all">Accept All</button>
+				<div id="cookies-accepted" style="display:none;">Cookies Accepted</div>
+				<script>
+					["accept-cookies", "accept-all"].forEach(id => {
+						document.getElementById(id).addEventListener("click", function() {
+							document.getElementById("cookies-accepted").style.display = "block";
+						});
+					});
+				</script>
+			`))
+	})
+
+	mux.HandleFunc("/popover_test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+	        <div class="popover" style="display: block;">
+	            Popover 1
+	            <button class="popover-close">Close</button>
+	        </div>
+	        <div class="popover" style="display: block;">
+	            Popover 2
+	            <button class="popover-close">Close</button>
+	        </div>
+	        <script>
+	            document.querySelectorAll(".popover-close").forEach(button => {
+	                button.addEventListener("click", function() {
+	                    this.closest(".popover").style.display = "none";
+	                });
+	            });
+	        </script>
+	    `))
+	})
+
+	mux.HandleFunc("/sequential_click_test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`
+				<button id="button1">Button 1</button>
+				<button id="button2">Button 2</button>
+				<button id="button3">Button 3</button>
+				<div id="all-clicked-in-order" style="display:none;">All Clicked In Order</div>
+				<script>
+					let clickOrder = [];
+					["button1", "button2", "button3"].forEach(id => {
+						document.getElementById(id).addEventListener("click", function() {
+							clickOrder.push(id);
+							if (clickOrder.join(",") === "button1,button2,button3") {
+								document.getElementById("all-clicked-in-order").style.display = "block";
+							}
+						});
+					});
+				</script>
+			`))
+	})
+
+	// New endpoints for hijack tests
+	mux.HandleFunc("/hijack_test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		resource := r.URL.Query().Get("resource")
+		fmt.Fprintf(w, `
+        <html>
+            <body>
+                <h1>Hijack Test</h1>
+                <script src="/test-script.js?resource=%s"></script>
+                <img src="/test-image.jpg?resource=%s" />
+                <script src="/test-script.js"></script>
+            </body>
+        </html>
+        `, resource, resource)
+	})
+
+	mux.HandleFunc("/test-script.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript")
+		fmt.Fprint(w, "console.log('Test script loaded');")
+	})
+
+	mux.HandleFunc("/test-image.jpg", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/jpeg")
+		// Send a small dummy image
+		w.Write([]byte{0xFF, 0xD8, 0xFF, 0xD9})
+	})
+
+	mux.HandleFunc("/image_test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `
+        <html>
+            <body>
+                <h1>Image Test</h1>
+                <img src="/test-image.jpg" id="test-image" />
+                <script>
+                    document.getElementById('test-image').onload = function() {
+                        console.log('Image loaded');
+                    }
+                </script>
+            </body>
+        </html>
+        `)
+	})
+
+	mux.HandleFunc("/xhr_test", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `
+        <html>
+            <body>
+                <h1>XHR Test</h1>
+                <script>
+                    fetch('/api/data')
+                        .then(response => response.json())
+                        .then(data => console.log(data));
+                </script>
+            </body>
+        </html>
+        `)
+	})
+
+	mux.HandleFunc("/api/data", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `{"message": "XHR response"}`)
+	})
+
+	mux.HandleFunc("/hijack_test_multiple", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprint(w, `
+        <html>
+            <head>
+                <link rel="stylesheet" href="/test.css" />
+            </head>
+            <body>
+                <h1>Multiple Resources Test</h1>
+                <script src="/test-script.js"></script>
+            </body>
+        </html>
+        `)
+	})
+
+	mux.HandleFunc("/test.css", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/css")
+		fmt.Fprint(w, "body { background-color: #f0f0f0; }")
+	})
+
 	return httptest.NewUnstartedServer(mux)
 }
 

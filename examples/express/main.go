@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/coghost/wee"
-	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
+	"github.com/coghost/zlog"
 )
 
 type Schema struct {
@@ -19,7 +19,7 @@ var mapper = Schema{
 }
 
 func main() {
-	xlog.InitLogDebug()
+	zlog.MustNewLoggerDebug()
 	xpretty.InitializeWithColor()
 
 	bot := wee.NewBotDefault()
@@ -31,5 +31,5 @@ func main() {
 	wsl := bot.CurrentURL() + `?InventoryType=WhileSuppliesLast`
 	bot.MustOpen(wsl)
 
-	bot.MustElemsForAllSelectors(mapper.Items)
+	bot.MustElemsForSelectors(mapper.Items)
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/coghost/wee"
-	"github.com/coghost/xlog"
 	"github.com/coghost/xpretty"
+	"github.com/coghost/zlog"
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 )
 
 func main() {
-	xlog.InitLogForConsole()
+	zlog.MustNewLoggerDebug()
 
 	bot := wee.NewBotDefault(
 		wee.WithCookieFile("/tmp/001.json"),

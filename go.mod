@@ -6,7 +6,6 @@ require (
 	github.com/alexflint/go-arg v1.5.0
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/coghost/xdtm v0.1.2-20240109
-	github.com/coghost/xlog v0.1.0
 	github.com/coghost/xpretty v0.0.0-20240109082848-b154112aa0aa
 	github.com/coghost/zlog v0.1.0
 	github.com/docker/docker v27.0.3+incompatible
@@ -72,7 +71,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/tetratelabs/wazero v1.7.2 // indirect
 	github.com/tidwall/gjson v1.17.1 // indirect

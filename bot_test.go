@@ -1,7 +1,9 @@
 package wee
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -9,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/coghost/wee/fixtures"
 	"github.com/coghost/zlog"
@@ -17,6 +20,8 @@ import (
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/stretchr/testify/suite"
 	"github.com/ungerik/go-dry"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type BotSuite struct {
@@ -527,7 +532,7 @@ func (s *BotSuite) Test04URLContains() {
 		},
 	}
 
-	var home = s.ts.URL + "/activate"
+	home := s.ts.URL + "/activate"
 
 	for _, tt := range tests {
 		s.T().Run("test_"+tt.name, func(t *testing.T) {
@@ -614,4 +619,322 @@ func (s *BotSuite) Test04ActivateLastOpenedPage() {
 			}
 		})
 	}
+}
+
+func (s *BotSuite) TestMustDOMStable() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless()
+	defer bot.Cleanup()
+
+	bot.MustOpen(s.ts.URL + "/dynamic")
+
+	start := time.Now()
+	bot.MustDOMStable()
+	elapsed := time.Since(start)
+
+	s.GreaterOrEqual(elapsed, time.Second)
+	s.True(bot.page.MustHas("div#dynamic-content"))
+}
+
+func (s *BotSuite) TestMustWaitLoad() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless()
+	defer bot.Cleanup()
+
+	start := time.Now()
+	bot.MustOpen(s.ts.URL + "/slow-load")
+	bot.MustWaitLoad()
+	elapsed := time.Since(start)
+
+	s.GreaterOrEqual(elapsed, 2*time.Second)
+	s.True(bot.page.MustHas("div#loaded-content"))
+}
+
+func (s *BotSuite) TestEnsureCookieFile() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless(WithCookies(true))
+	defer bot.Cleanup()
+
+	bot.MustOpen(s.ts.URL)
+	err := bot.ensureCookieFile()
+	s.Nil(err)
+	s.NotEmpty(bot.cookieFile)
+	_, err = bot.DumpCookies()
+	s.Nil(err)
+	s.FileExists(bot.cookieFile)
+
+	// Clean up
+	os.Remove(bot.cookieFile)
+}
+
+func (s *BotSuite) TestSetPanicWith() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless()
+	defer bot.Cleanup()
+
+	bot.SetPanicWith(PanicByDump)
+	s.Equal(PanicByDump, bot.panicBy)
+
+	bot.SetPanicWith(PanicByLogError)
+	s.Equal(PanicByLogError, bot.panicBy)
+}
+
+func (s *BotSuite) TestTimeTrack() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless(TrackTime(true))
+	defer bot.Cleanup()
+
+	// Capture log output
+	var buf bytes.Buffer
+	bot.logger = zap.New(zapcore.NewCore(
+		zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
+		zapcore.AddSync(&buf),
+		zap.DebugLevel,
+	))
+
+	start := time.Now()
+	time.Sleep(100 * time.Millisecond)
+	bot.TimeTrack(start, 1)
+
+	s.Contains(buf.String(), "took")
+	s.Contains(buf.String(), "TestTimeTrack")
+}
+
+func (s *BotSuite) TestPieErrorHandling() {
+	s.T().Parallel()
+
+	testError := errors.New("test error") //nolint
+
+	tests := []struct {
+		name      string
+		panicBy   PanicByType
+		wantPanic bool
+	}{
+		{"PanicByDump", PanicByDump, false},
+		{"PanicByLogError", PanicByLogError, false},
+		{"PanicByDft", PanicByDft, true},
+	}
+
+	for _, tt := range tests {
+		s.T().Run(tt.name, func(t *testing.T) {
+			bot := NewBotHeadless()
+			defer bot.Cleanup()
+
+			bot.SetPanicWith(tt.panicBy)
+
+			if tt.wantPanic {
+				s.Panics(func() { bot.pie(testError) })
+			} else {
+				s.NotPanics(func() { bot.pie(testError) })
+			}
+		})
+	}
+}
+
+func (s *BotSuite) TestNewBotWithOptionsOnly() {
+	s.T().Parallel()
+
+	bot := NewBotWithOptionsOnly(WithHighlightTimes(5), UserAgent("TestAgent"))
+	s.Nil(bot.page)
+	s.Equal(5, bot.highlightTimes)
+	s.Equal("TestAgent", bot.userAgent)
+}
+
+func (s *BotSuite) TestBlockInCleanUp() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless()
+
+	done := make(chan bool)
+	go func() {
+		bot.BlockInCleanUp()
+		done <- true
+	}()
+
+	select {
+	case <-done:
+		s.Fail("BlockInCleanUp should not return")
+	case <-time.After(2 * time.Second):
+		// This is expected behavior
+	}
+}
+
+func (s *BotSuite) TestSetTimeout() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless()
+	bot.SetTimeout()
+
+	s.Equal(LongToSec*time.Second, bot.longTimeout)
+	s.Equal(MediumToSec*time.Second, bot.mediumTimeout)
+	s.Equal(ShortToSec*time.Second, bot.shortTimeout)
+	s.Equal(NapToSec*time.Second, bot.napTimeout)
+	s.Equal(PT10Sec*time.Second, bot.pt10s)
+	s.Equal(1*time.Second, bot.pt1s)
+}
+
+func (s *BotSuite) TestCurrentURL() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless()
+	defer bot.Cleanup()
+
+	bot.MustOpen(s.ts.URL)
+	s.Equal(s.ts.URL, strings.TrimSuffix(bot.CurrentURL(), "/"))
+}
+
+func (s *BotSuite) TestResetIfHeadless() {
+	s.T().Parallel()
+
+	bot := NewBot(Headless(true))
+	originalBrowser := bot.browser
+
+	resetIfHeadless(bot)
+
+	s.NotEqual(originalBrowser, bot.browser, "Browser should be reset when headless is true")
+}
+
+func (s *BotSuite) TestNewBotForDebug() {
+	s.T().Parallel()
+
+	bot := NewBotForDebug()
+	defer bot.Cleanup()
+
+	s.NotNil(bot.launcher)
+	s.NotNil(bot.browser)
+	// Check if the --show-paint-rects flag is set
+	pr := PaintRects[2:]
+
+	found := false
+	for k := range bot.launcher.Flags {
+		if pr == string(k) {
+			found = true
+			break
+		}
+	}
+
+	s.True(found)
+}
+
+func (s *BotSuite) TestInitialize() {
+	s.T().Parallel()
+
+	bot := &Bot{}
+	bot.initialize()
+
+	s.NotNil(bot.logger)
+	s.Equal(1, bot.highlightTimes)
+	s.Len(bot.UniqueID, _uniqueIDLen)
+}
+
+func (s *BotSuite) TestBindBotLauncher() {
+	s.T().Parallel()
+
+	bot := NewBotWithOptionsOnly()
+	s.False(bot.isLaunched)
+	s.Nil(bot.page)
+
+	BindBotLanucher(bot)
+	s.True(bot.isLaunched)
+	s.NotNil(bot.page)
+
+	// Test that calling BindBotLanucher again doesn't change anything
+	originalPage := bot.page
+	BindBotLanucher(bot)
+	s.Equal(originalPage, bot.page)
+}
+
+func (s *BotSuite) TestOverrideUA() {
+	s.T().Parallel()
+
+	ua := "TestUserAgent"
+	lang := "en-US"
+	override := overrideUA(ua, lang)
+
+	s.Equal(ua, override.UserAgent)
+	s.Equal(lang, override.AcceptLanguage)
+
+	// Test default language
+	override = overrideUA(ua, "")
+	s.Equal("en-CN,en;q=0.9,zh-CN;q=0.8,zh;q=0.7,en-GB;q=0.6,en-US;q=0.5", override.AcceptLanguage)
+}
+
+func (s *BotSuite) TestBotOptions() {
+	s.T().Parallel()
+
+	testUA := "TestUserAgent"
+	testLang := "zh-CN"
+	testDir := "/tmp/test_user_data"
+	testCookieFile := "/tmp/test_cookies.json"
+
+	bot := NewBot(
+		UserAgent(testUA),
+		AcceptLanguage(testLang),
+		UserDataDir(testDir),
+		WithHighlightTimes(5),
+		WithCookieFile(testCookieFile),
+		Humanized(true),
+		StealthMode(true),
+		ForceCleanup(true),
+		ClearCookies(true),
+		TrackTime(true),
+		WithLeftPosition(100),
+	)
+	defer bot.Cleanup()
+
+	s.Equal(testUA, bot.userAgent)
+	s.Equal(testLang, bot.acceptLanguage)
+	s.Equal(testDir, bot.userDataDir)
+	s.Equal(5, bot.highlightTimes)
+	s.Equal(testCookieFile, bot.cookieFile)
+	s.True(bot.humanized)
+	s.True(bot.stealthMode)
+	s.True(bot.forceCleanup)
+	s.True(bot.clearCookies)
+	s.True(bot.trackTime)
+	s.Equal(100, bot.left)
+}
+
+func (s *BotSuite) TestLogTimeSpent() {
+	s.T().Parallel()
+
+	var buf bytes.Buffer
+	logger := zap.New(zapcore.NewCore(
+		zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
+		zapcore.AddSync(&buf),
+		zap.DebugLevel,
+	))
+
+	bot := NewBotHeadless(Logger(logger), TrackTime(true))
+	defer bot.Cleanup()
+
+	start := time.Now()
+	time.Sleep(100 * time.Millisecond)
+	bot.LogTimeSpent(start)
+
+	s.Contains(buf.String(), "TestLogTimeSpent")
+	s.Contains(buf.String(), "took")
+}
+
+func (s *BotSuite) TestClearStorageCookies() {
+	s.T().Parallel()
+
+	bot := NewBotHeadless()
+	defer bot.Cleanup()
+
+	// Set a cookie
+	bot.MustOpen(s.ts.URL + "/set_cookie")
+
+	// Clear cookies
+	bot.ClearStorageCookies()
+
+	// Verify cookies are cleared
+	cookies, err := bot.browser.GetCookies()
+	s.Nil(err)
+	s.Empty(cookies)
 }

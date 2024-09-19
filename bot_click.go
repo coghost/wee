@@ -117,7 +117,7 @@ func (b *Bot) ClickElem(elem *rod.Element, opts ...ElemOptionFunc) error {
 
 	err := b.MakeElemInteractable(elem, opt.handleCoverByEsc)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to make element interactable: %w", err)
 	}
 
 	err = elem.Timeout(b.shortTimeout).Click(proto.InputMouseButtonLeft, 1)
@@ -150,12 +150,25 @@ func (b *Bot) MakeElemInteractable(elem *rod.Element, byEsc bool) error {
 }
 
 func (b *Bot) Interactable(elem *rod.Element) error {
-	if _, err := elem.Interactable(); err != nil {
-		e := elem.ScrollIntoView()
-		if e == nil {
-			if _, err = elem.Interactable(); err != nil {
-				return err
-			}
+	vis, err := elem.Visible()
+	if !vis {
+		return ErrNotVisible
+	}
+
+	if err != nil {
+		return fmt.Errorf("error checking visibility: %w", err)
+	}
+
+	_, err = elem.Interactable()
+	if err != nil {
+		scrollErr := elem.ScrollIntoView()
+		if scrollErr != nil {
+			return fmt.Errorf("error scrolling into view: %w", scrollErr)
+		}
+
+		_, err = elem.Interactable()
+		if err != nil {
+			return fmt.Errorf("element not interactable after scrolling: %w", err)
 		}
 	}
 
@@ -249,6 +262,7 @@ func (b *Bot) AcceptCookies(cookies ...string) error {
 	}
 
 	clickedAny := false
+
 	for _, sel := range cookies {
 		err := b.Click(sel)
 		if err != nil {
@@ -264,7 +278,7 @@ func (b *Bot) AcceptCookies(cookies ...string) error {
 
 	err := b.page.WaitLoad()
 	if err != nil {
-		return fmt.Errorf("%w: %v", ErrPageLoadAfterCookies, err)
+		return fmt.Errorf("%w: %w", ErrPageLoadAfterCookies, err)
 	}
 
 	return nil
@@ -333,7 +347,7 @@ func (b *Bot) ClosePopover(sel string) (int, error) {
 			return 0, err
 		}
 
-		b.HighlightElem(elem)
+		b.highlightElem(elem)
 
 		e := elem.Click(proto.InputMouseButtonLeft, 1)
 		if e != nil {

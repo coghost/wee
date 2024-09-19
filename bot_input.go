@@ -128,7 +128,7 @@ func (b *Bot) InputSelect(sel, text string, opts ...ElemOptionFunc) error {
 	opt := ElemOptions{selectorType: rod.SelectorTypeText}
 	bindElemOptions(&opt, opts...)
 
-	elem, err := b.NotNilElem(sel, opts)
+	elem, err := b.EnsureNonNilElem(sel, opts)
 	if err != nil {
 		return err
 	}
