@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	_offsetToTop      = 0.25
+	_offsetToTop      = 0.35
 	_scrollHeight     = 1024
 	_longSleepChance  = 0.05
 	_shortSleepChance = 0.15
@@ -21,16 +21,28 @@ const (
 
 var ErrElemShapeBox = errors.New("cannot get element box by shape.Box()")
 
+// PressPageDown simulates pressing the Page Down key multiple times on the main document body.
+//   - It takes an integer parameter 'times' specifying the number of times to press Page Down.
+//   - It takes `html>body` as the element to perform page down
+//
+// Returns an error if the body element cannot be found or if the key press operation fails.
 func (b *Bot) PressPageDown(times int) error {
-	elem, err := b.Elem("html>body")
+	elem, err := b.Elem("html>body", WithTimeout(PT60Sec))
 	if err != nil {
 		return err
 	}
 
-	for i := 0; i < times; i++ {
-		_ = elem.Timeout(b.shortTimeout).MustKeyActions().Press(input.PageDown).Do()
+	return b.PressPageDownOnElem(elem, times)
+}
 
-		time.Sleep(500 * time.Millisecond) //nolint:mnd
+func (b *Bot) PressPageDownOnElem(elem *rod.Element, times int) error {
+	for range times {
+		ka, _ := elem.Timeout(b.mediumTimeout).KeyActions()
+		if err := ka.Press(input.PageDown).Do(); err != nil {
+			return err
+		}
+
+		time.Sleep(200 * time.Millisecond) //nolint:mnd
 	}
 
 	return nil
@@ -62,7 +74,8 @@ func (b *Bot) scrollToElement(elem *rod.Element, opts ...ElemOptionFunc) error {
 	h := b.GetWindowInnerHeight()
 	scrollDistance := box.Y - h*opt.offsetToTop
 
-	return b.Scroll(0.0, scrollDistance, opt.steps)
+	// return b.Scroll(0.0, scrollDistance, opt.steps)
+	return b.ScrollLikeHuman(0, scrollDistance, opts...)
 }
 
 // Scroll Scroll with mouse.
@@ -98,7 +111,7 @@ func (b *Bot) tryGetScrollHeight() {
 		// }
 		b.scrollHeight = _scrollHeight
 	} else {
-		b.scrollHeight = height
+		b.scrollHeight = height - 100
 	}
 }
 

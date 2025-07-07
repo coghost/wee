@@ -24,7 +24,7 @@ func (b *Bot) MustInput(sel, text string, opts ...ElemOptionFunc) string {
 
 // Input first clear all content, and then input text content.
 func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
-	opt := ElemOptions{submit: false, timeout: PT10Sec, clearBeforeInput: true, endWithEscape: false, humanized: b.humanized}
+	opt := ElemOptions{submit: false, timeout: PT20Sec, clearBeforeInput: true, endWithEscape: false, humanized: b.humanized}
 	bindElemOptions(&opt, opts...)
 
 	if opt.humanized {
@@ -75,7 +75,9 @@ func (b *Bot) Input(sel, text string, opts ...ElemOptionFunc) (string, error) {
 	}
 
 	if opt.submit {
-		SleepPT100Ms()
+		if opt.humanized {
+			RandSleepNap()
+		}
 
 		action, err := elem.KeyActions()
 		if err != nil {
@@ -112,6 +114,8 @@ func (b *Bot) typeAsHuman(elem *rod.Element, text string, humanized bool) error 
 		if err := elem.Timeout(PT20Sec * time.Second).Input(str); err != nil {
 			return fmt.Errorf("cannot input by humanized: %w", err)
 		}
+
+		SleepPT100Ms()
 	}
 
 	wait := 0.1

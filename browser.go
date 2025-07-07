@@ -10,7 +10,6 @@ import (
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/launcher/flags"
 	"github.com/gookit/goutil/fsutil"
-	"github.com/k0kubun/pp/v3"
 	"github.com/samber/lo"
 )
 
@@ -66,9 +65,14 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 	lnchr := launcher.New()
 	setLauncher(lnchr, opt.headless)
 
-	// for _, extFolder := range opt.extensions {
-	lnchr.Set("load-extension", strings.Join(opt.extensions, ","))
-	// }
+	extensions := strings.Join(opt.extensions, ",")
+	if extensions != "" {
+		log.Printf("loaded extensions: %s", extensions)
+		// for _, extFolder := range opt.extensions {
+		lnchr.Set("load-extension", extensions)
+		// }
+		time.Sleep(time.Second * 2)
+	}
 
 	if dir := opt.userDataDir; dir != "" {
 		lnchr.UserDataDir(fsutil.Expand(dir))
@@ -97,12 +101,34 @@ func newUserModeLauncher(opts ...BrowserOptionFunc) (*launcher.Launcher, string)
 
 	launch := launcher.NewUserMode()
 
+	path, _ := launcher.LookPath()
+	log.Printf("launch with bin: %s", path)
+
 	if dir := opt.userDataDir; dir != "" {
-		launch = launch.UserDataDir(fsutil.Expand(dir))
-		pp.Println("set user-data-dir to:", dir)
+		absDir := fsutil.Expand(dir)
+		launch = launch.UserDataDir(absDir)
+		log.Printf("set user-data-dir to: %s", absDir)
 	}
 
+	/*
+		wsURL := launcher.NewUserMode().Leakless(true).
+		UserDataDir("/tmp/t").
+		Set("disable-default-apps").
+		Set("no-first-run").MustLaunch()
+	*/
+
 	launch.Leakless(opt.leakless)
+
+	log.Printf("leakless is set, try flags: %d", len(opt.flags))
+
+	if len(opt.flags) != 0 {
+		lo.ForEach(opt.flags, func(item string, i int) {
+			launch.Set(flags.Flag(item))
+			log.Printf("set %s\n", item)
+		})
+	}
+
+	log.Print("flags are set, try launch")
 
 	wsURL, err := launch.Launch()
 	if err != nil {
@@ -113,6 +139,8 @@ func newUserModeLauncher(opts ...BrowserOptionFunc) (*launcher.Launcher, string)
 
 		log.Fatalf("cannot launch browser: %v", err)
 	}
+
+	log.Printf("got %s", wsURL)
 
 	return launch, wsURL
 }

@@ -224,7 +224,7 @@ func (b *Bot) ClickElemWithScript(elem *rod.Element, opts ...ElemOptionFunc) err
 
 	_, err := elem.Timeout(time.Duration(opt.timeout)*time.Second).CancelTimeout().Eval(`(elem) => { this.click() }`, elem)
 	if err != nil {
-		b.logger.Error("cannot close by Eval script this.click()", zap.Error(err))
+		b.logger.Error("cannot close by Eval script this.click()", zap.Error(err), zap.String("elem", elem.String()))
 		return err
 	}
 

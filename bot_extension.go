@@ -63,10 +63,10 @@ chrome.webRequest.onAuthRequired.addListener(callbackFn, { urls: ['<all_urls>'] 
 
 	proxyID := arr[0]
 
-	if strings.Contains(arr[0], "superproxy") {
-		ipArr := strings.Split(arr[2], "-")
-		proxyID = ipArr[len(ipArr)-1]
-	}
+	// if strings.Contains(arr[0], "superproxy") {
+	// 	ipArr := strings.Split(arr[2], "-")
+	// 	proxyID = ipArr[len(ipArr)-1]
+	// }
 
 	proxyID = strings.ReplaceAll(proxyID, ".", "_")
 

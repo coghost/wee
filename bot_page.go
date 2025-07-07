@@ -63,6 +63,24 @@ func (b *Bot) CustomizePage() {
 	// vw, vh := w, 728
 	// b.page = b.page.MustSetViewport(display.ViewOffsetWidth, display.ViewOffsetHeight, 0.0, false)
 
+	b.setWindowAndViewport()
+
+	b.isLaunched = true
+}
+
+func (b *Bot) setWindowAndViewport() {
+	if b.windowMaximize {
+		b.page = b.page.MustWindowMaximize()
+		return
+	}
+
+	if b.bounds != nil {
+		disp := b.bounds
+		b.page = b.page.MustSetWindow(disp.Left, disp.Top, disp.Width, disp.Height)
+
+		return
+	}
+
 	err := b.page.SetWindow(&proto.BrowserBounds{
 		Left:        &b.left,
 		WindowState: proto.BrowserWindowStateNormal,
@@ -72,8 +90,6 @@ func (b *Bot) CustomizePage() {
 	}
 
 	_ = b.page.SetViewport(nil)
-
-	b.isLaunched = true
 }
 
 func (b *Bot) MustOpen(uri string) {

@@ -35,7 +35,11 @@ type Bot struct {
 	prevPage *rod.Page
 	root     *rod.Element
 
-	left int
+	left           int
+	windowMaximize bool
+
+	// bounds of browser
+	bounds *BrowserBounds
 
 	isLaunched       bool
 	withPageCreation bool
@@ -79,6 +83,7 @@ type Bot struct {
 	pt10s         time.Duration
 	pt1s          time.Duration
 
+	browserOptions []BrowserOptionFunc
 	// unused options
 	// innerHeight  int
 	// presetOptions []BotOption
@@ -126,8 +131,9 @@ func BindBotLanucher(bot *Bot, options ...BotOption) {
 		}
 
 		lnchr, brw = NewUserMode(LaunchLeakless(bot.forceCleanup), BrowserUserDataDir(bot.userDataDir))
+		// lnchr, brw = NewUserMode(bot.browserOptions...)
 	} else {
-		lnchr, brw = NewBrowser()
+		lnchr, brw = NewBrowser(bot.browserOptions...)
 	}
 
 	options = append(options, Launcher(lnchr), Browser(brw), WithPage(true))
@@ -318,6 +324,13 @@ func AcceptLanguage(s string) BotOption {
 func UserDataDir(s string) BotOption {
 	return func(o *Bot) {
 		o.userDataDir = s
+		o.browserOptions = append(o.browserOptions, BrowserUserDataDir(s))
+	}
+}
+
+func WithBrowserOptions(browserOptions []BrowserOptionFunc) BotOption {
+	return func(o *Bot) {
+		o.browserOptions = append(o.browserOptions, browserOptions...)
 	}
 }
 

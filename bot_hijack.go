@@ -260,6 +260,7 @@ func (b *Bot) DisableImages() {
 // Usage:
 //
 //	bot.DumpXHR([]string{"*api/data*"}, func(h *rod.Hijack) {
+//	    h.MustLoadResponse()
 //	    fmt.Printf("XHR: %s\n", h.Request.URL())
 //	    fmt.Printf("Response Body: %s\n", h.Response.Body())
 //	})
@@ -282,7 +283,7 @@ func (b *Bot) DumpXHR(ptn []string, handler func(h *rod.Hijack)) {
 	b.Hijack(ptn,
 		proto.NetworkResourceTypeXHR,
 		func(h *rod.Hijack) {
-			h.MustLoadResponse()
+			// h.MustLoadResponse()
 			handler(h)
 		}, true)
 }

@@ -1,42 +1,22 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/coghost/wee"
-	"github.com/coghost/xpretty"
-	"github.com/coghost/zlog"
+	"github.com/go-rod/rod"
+	"github.com/go-rod/rod/lib/launcher"
 )
 
 func main() {
-	log := zlog.MustNewZapLogger()
-	xpretty.InitializeWithColor()
+	lch := launcher.NewUserMode()
+	lch = lch.Bin("/Applications/Google Chrome Dev.app/Contents/MacOS/Google Chrome Dev")
+	lch = lch.Headless(false)
+	wsURL := lch.MustLaunch()
 
-	bot := wee.NewBotUserMode()
+	browser := rod.New().ControlURL(wsURL).MustConnect().NoDefaultDevice()
+	browser.MustPage("https://www.indeed.com/")
 
-	defer bot.Cleanup()
-
-	bot.MustOpen("http://www.baidu.com")
-
-	const (
-		input     = `input[id="kw"]`
-		results   = `div#content_left div.result-op h3>a`
-		noResults = `div.thiscannotbeexisted`
-	)
-
-	bot.MustInput(input, "python", wee.WithSubmit(true))
-
-	sel := bot.MustAnyElem([]string{results, noResults})
-
-	if sel == noResults {
-		log.Info("no results found")
-		return
-	}
-
-	elems, err := bot.Elems(results)
-	if err != nil {
-		log.Sugar().Infof("cannot get results: %v", err)
-	}
-
-	for _, elem := range elems {
-		xpretty.CyanPrintln(elem.MustText())
-	}
+	fmt.Println("done")
+	wee.Confirm("continue?")
 }
