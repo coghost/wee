@@ -435,3 +435,47 @@ func KillProcess(name string) error {
 
 	return nil
 }
+
+// SanitizeFilename replaces common unsafe characters with underscores
+func SanitizeFilename(s string) string {
+	replacer := strings.NewReplacer(
+		"/", "_",
+		"\\", "_",
+		"?", "_",
+		"&", "_",
+		"=", "_",
+		"#", "_",
+		":", "_",
+		"\"", "_",
+		"<", "_",
+		">", "_",
+		"*", "_",
+		"|", "_",
+	)
+	return replacer.Replace(s)
+}
+
+// Generate a path like: domain.com, some_path_query, error
+func GenerateDomainPathFromURL(rawURL string) (string, string, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return "", "", err
+	}
+
+	domain := parsed.Host
+
+	path := parsed.Path
+	if path == "" || strings.HasSuffix(path, "/") {
+		path += "index"
+	}
+
+	filename := path
+
+	if parsed.RawQuery != "" {
+		filename += "_" + parsed.RawQuery
+	}
+
+	filename = SanitizeFilename(filename)
+
+	return domain, filename, nil
+}
