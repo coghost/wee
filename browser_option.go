@@ -7,6 +7,7 @@ type BrowserOptions struct {
 	headless        bool
 	noDefaultDevice bool
 	incognito       bool
+	devtools        bool
 
 	leakless bool
 
@@ -66,6 +67,12 @@ func BrowserUserDataDir(s string) BrowserOptionFunc {
 func BrowserHeadless(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.headless = b
+	}
+}
+
+func BrowserDevtools(b bool) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.devtools = b
 	}
 }
 

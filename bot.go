@@ -49,6 +49,7 @@ type Bot struct {
 	// launcher/browser options
 	userMode       bool
 	headless       bool
+	devtools       bool
 	userAgent      string
 	acceptLanguage string
 	userDataDir    string
@@ -384,6 +385,12 @@ func UserMode(b bool) BotOption {
 func Headless(b bool) BotOption {
 	return func(o *Bot) {
 		o.headless = b
+	}
+}
+
+func Devtools(b bool) BotOption {
+	return func(o *Bot) {
+		o.devtools = b
 	}
 }
 

@@ -35,14 +35,14 @@ type IPInfo struct {
 // CurlIPFromIfconfigCO loads `https://ifconfig.co/json`
 // return the Unmarshal data, error
 func CurlIPFromIfconfigCO(bot *Bot) (*IPInfo, error) {
-	cleanUprequired := false
+	cleanUpRequired := false
 
 	if bot == nil {
 		bot = NewBotHeadless()
-		cleanUprequired = true
+		cleanUpRequired = true
 	}
 
-	if cleanUprequired {
+	if cleanUpRequired {
 		defer bot.Cleanup()
 	}
 

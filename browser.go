@@ -69,7 +69,7 @@ func NewLauncher(opts ...BrowserOptionFunc) *launcher.Launcher {
 	if extensions != "" {
 		log.Printf("loaded extensions: %s", extensions)
 		// for _, extFolder := range opt.extensions {
-		lnchr.Set("load-extension", extensions)
+		lnchr = lnchr.Set("load-extension", extensions)
 		// }
 		time.Sleep(time.Second * 2)
 	}

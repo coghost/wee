@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/coghost/pathlib"
 	"github.com/coghost/wee"
@@ -39,7 +40,27 @@ func main() {
 }
 
 func run(videoURL string) {
-	bot := wee.NewBotDefault(wee.WithBounds(wee.NewBoundsHD()))
+	// bot := wee.NewBotDefault(wee.WithBounds(wee.NewBoundsHD()))
+	options := []wee.BotOption{
+		wee.Headless(false),
+		wee.Devtools(true),
+		wee.WithBounds(wee.NewBoundsHD()),
+	}
+
+	extensionDir, b := os.LookupEnv("BOT_EXTENSION_DIR")
+	if !b {
+		extensionDir = ""
+	}
+
+	options = append(
+		options,
+		wee.WithBrowserOptions([]wee.BrowserOptionFunc{
+			wee.BrowserExtensions(extensionDir),
+		}))
+
+	bot := wee.NewBotWithOptionsOnly(options...)
+	wee.BindBotLanucher(bot)
+	bot.DisableImages()
 
 	bot.MustOpen(url)
 	bot.MustInput(input, videoURL)
