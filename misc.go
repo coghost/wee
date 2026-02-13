@@ -479,3 +479,18 @@ func GenerateDomainPathFromURL(rawURL string) (string, string, error) {
 
 	return domain, filename, nil
 }
+
+// JoinURLWithRef joins a URI reference from a base URL
+func JoinURLWithRef(baseURL, refURL string) (*url.URL, error) {
+	parsedURL, err := url.Parse(refURL)
+	if err != nil {
+		return nil, err
+	}
+
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return base.ResolveReference(parsedURL), nil
+}

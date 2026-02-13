@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/coghost/wee"
+	"github.com/k0kubun/pp/v3"
 )
 
 func main() {
@@ -19,7 +20,21 @@ func main() {
 	)
 
 	bot.MustOpen(url)
-	bot.MustInput(input, "golang", wee.WithSubmit(true))
+	// bot.MustInput(input, "golang", wee.WithSubmit(true))
+
+	got1 := bot.MustEval(`() => {
+  function extractCards() {
+    let cards = { a: 'OK', b: 1 }
+    return cards
+  }
+
+  window.extractCards = extractCards
+  return 'DONE'
+}
+`)
+
+	pp.Println(got1)
+	wee.Confirm("wanna continue?")
 
 	got := bot.MustAnyElem([]string{items, noItems})
 	if got == noItems {

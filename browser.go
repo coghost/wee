@@ -102,6 +102,11 @@ func newUserModeLauncher(opts ...BrowserOptionFunc) (*launcher.Launcher, string)
 	launch := launcher.NewUserMode()
 
 	path, _ := launcher.LookPath()
+	if opt.bin != "" {
+		path = opt.bin
+		launch = launch.Bin(opt.bin)
+	}
+
 	log.Printf("launch with bin: %s", path)
 
 	if dir := opt.userDataDir; dir != "" {

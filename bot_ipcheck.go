@@ -60,3 +60,7 @@ func CurlIPFromIfconfigCO(bot *Bot) (*IPInfo, error) {
 
 	return co, err
 }
+
+func VerifyBotViaCurlIPFromIfconfig(bot *Bot) (*IPInfo, error) {
+	return CurlIPFromIfconfigCO(bot)
+}

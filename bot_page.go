@@ -162,10 +162,14 @@ func (b *Bot) Open(url string, timeouts ...time.Duration) error {
 }
 
 // OpenURLInNewTab opens url in a new tab and activates it
-func (b *Bot) OpenURLInNewTab(uri string) error {
+func (b *Bot) OpenURLInNewTab(uri string, withActivation bool) error {
 	p, err := b.browser.Page(proto.TargetCreateTarget{URL: uri})
 	if err != nil {
 		return fmt.Errorf("cannot new page with url(%s): %w", uri, err)
+	}
+
+	if !withActivation {
+		return nil
 	}
 
 	if err := b.ActivatePage(p); err != nil {

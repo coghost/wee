@@ -131,8 +131,8 @@ func BindBotLanucher(bot *Bot, options ...BotOption) {
 			}
 		}
 
-		lnchr, brw = NewUserMode(LaunchLeakless(bot.forceCleanup), BrowserUserDataDir(bot.userDataDir))
-		// lnchr, brw = NewUserMode(bot.browserOptions...)
+		// lnchr, brw = NewUserMode(LaunchLeakless(bot.forceCleanup), BrowserUserDataDir(bot.userDataDir))
+		lnchr, brw = NewUserMode(bot.browserOptions...)
 	} else {
 		lnchr, brw = NewBrowser(bot.browserOptions...)
 	}
