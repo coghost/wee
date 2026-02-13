@@ -15,6 +15,8 @@ type BrowserOptions struct {
 
 	slowMotionDelay int
 
+	bin string
+
 	userDataDir string
 	// proxy ip:port
 	proxy string
@@ -104,5 +106,11 @@ func BrowserExtensions(extArr ...string) BrowserOptionFunc {
 func LaunchLeakless(b bool) BrowserOptionFunc {
 	return func(o *BrowserOptions) {
 		o.leakless = b
+	}
+}
+
+func BrowserBin(s string) BrowserOptionFunc {
+	return func(o *BrowserOptions) {
+		o.bin = s
 	}
 }
