@@ -17,7 +17,7 @@ var newsLayout = "https://www.crunchbase.com/organization/%s/news_and_analysis"
 
 func main() {
 	lch := launcher.NewUserMode().
-		UserDataDir(pathlib.Path("~/tmp/sb/1021").ExpandUser().String()).
+		UserDataDir(pathlib.Path("~/tmp/pb").ExpandUser().String()).
 		Set("disable-default-apps").
 		Set("no-first-run")
 

@@ -101,6 +101,13 @@ func newUserModeLauncher(opts ...BrowserOptionFunc) (*launcher.Launcher, string)
 
 	launch := launcher.NewUserMode()
 
+	extensions := strings.Join(opt.extensions, ",")
+	if extensions != "" {
+		log.Printf("loaded extensions: %s", extensions)
+		launch = launch.Set("load-extension", extensions)
+		time.Sleep(time.Second * 2)
+	}
+	
 	path, _ := launcher.LookPath()
 	if opt.bin != "" {
 		path = opt.bin
@@ -122,9 +129,11 @@ func newUserModeLauncher(opts ...BrowserOptionFunc) (*launcher.Launcher, string)
 		Set("no-first-run").MustLaunch()
 	*/
 
-	launch.Leakless(opt.leakless)
+	log.Printf("leakless is %t, try flags: %d", opt.leakless, len(opt.flags))
 
-	log.Printf("leakless is set, try flags: %d", len(opt.flags))
+	if opt.leakless {
+		launch.Leakless(opt.leakless)
+	}
 
 	if len(opt.flags) != 0 {
 		lo.ForEach(opt.flags, func(item string, i int) {
