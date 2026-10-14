@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-rod/rod"
+	rod "github.com/headlesslab/wand"
 )
 
 const (

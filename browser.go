@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
-	"github.com/go-rod/rod/lib/launcher/flags"
 	"github.com/gookit/goutil/fsutil"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/launcher"
+	"github.com/headlesslab/wand/lib/launcher/flags"
 	"github.com/samber/lo"
 )
 
@@ -107,7 +107,7 @@ func newUserModeLauncher(opts ...BrowserOptionFunc) (*launcher.Launcher, string)
 		launch = launch.Set("load-extension", extensions)
 		time.Sleep(time.Second * 2)
 	}
-	
+
 	path, _ := launcher.LookPath()
 	if opt.bin != "" {
 		path = opt.bin

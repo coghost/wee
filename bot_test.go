@@ -15,8 +15,8 @@ import (
 
 	"github.com/coghost/wee/fixtures"
 	"github.com/coghost/zlog"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/launcher"
 	"github.com/remeh/sizedwaitgroup"
 	"github.com/stretchr/testify/suite"
 	"github.com/ungerik/go-dry"

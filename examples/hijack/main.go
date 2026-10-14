@@ -7,8 +7,8 @@ import (
 
 	"github.com/coghost/wee"
 	"github.com/coghost/zlog"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/proto"
 	"go.uber.org/zap"
 )
 

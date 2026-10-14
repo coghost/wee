@@ -3,8 +3,8 @@ package wee
 import (
 	"strings"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/proto"
 )
 
 // HijackHandler is a function type used for handling hijacked network resources in web automation tasks.

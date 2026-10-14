@@ -8,9 +8,9 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/coghost/xpretty"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/input"
 	"github.com/gookit/goutil/sysutil"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/input"
 	"go.uber.org/zap"
 )
 

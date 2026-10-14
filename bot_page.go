@@ -9,9 +9,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
-	"github.com/go-rod/stealth"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/proto"
 	"github.com/thoas/go-funk"
 	"go.uber.org/zap"
 )
@@ -39,11 +38,12 @@ func (b *Bot) CustomizePage() {
 	}
 
 	if b.page == nil {
-		if b.stealthMode && !b.userMode {
-			b.page = stealth.MustPage(b.browser)
-		} else {
-			b.page = b.browser.MustPage()
-		}
+		// WARN: temporary disabled stealthMode @2026-10-14
+		// if b.stealthMode && !b.userMode {
+		// 	b.page = stealth.MustPage(b.browser)
+		// } else {
+		b.page = b.browser.MustPage()
+		// }
 	}
 
 	ua := b.userAgent

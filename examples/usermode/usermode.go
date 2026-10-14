@@ -6,8 +6,8 @@ import (
 	"github.com/coghost/pathlib"
 	"github.com/coghost/sleep"
 	"github.com/coghost/wee"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/launcher"
 	"github.com/k0kubun/pp/v3"
 )
 

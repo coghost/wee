@@ -6,10 +6,10 @@ import (
 
 	"github.com/coghost/xpretty"
 	"github.com/coghost/zlog"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 	"github.com/gookit/goutil/dump"
 	"github.com/gookit/goutil/strutil"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/launcher"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 )

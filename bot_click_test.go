@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/coghost/wee/fixtures"
-	"github.com/go-rod/rod/lib/input"
+	"github.com/headlesslab/wand/lib/input"
 	"github.com/stretchr/testify/suite"
 )
 

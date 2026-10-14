@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/coghost/wee/fixtures"
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/proto"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/proto"
 	"github.com/stretchr/testify/suite"
 )
 

@@ -7,9 +7,9 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-vgo/robotgo"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/launcher"
 )
 
 // Launch Chrome with remote debugging enabled

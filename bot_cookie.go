@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/go-rod/rod/lib/proto"
 	"github.com/gookit/goutil/fsutil"
+	"github.com/headlesslab/wand/lib/proto"
 	"github.com/jrefior/uncurl"
 )
 
@@ -200,17 +200,17 @@ func (b *Bot) LoadCookies(filepath string) ([]*proto.NetworkCookieParam, error) 
 	for _, cookie := range cookies {
 		port := &cookie.SourcePort
 		nodes = append(nodes, &proto.NetworkCookieParam{
-			Name:         cookie.Name,
-			Value:        cookie.Value,
-			URL:          b.CurrentURL(),
-			Domain:       cookie.Domain,
-			Path:         cookie.Path,
-			Secure:       cookie.Secure,
-			HTTPOnly:     cookie.HTTPOnly,
-			SameSite:     cookie.SameSite,
-			Expires:      cookie.Expires,
-			Priority:     cookie.Priority,
-			SameParty:    cookie.SameParty,
+			Name:     cookie.Name,
+			Value:    cookie.Value,
+			URL:      b.CurrentURL(),
+			Domain:   cookie.Domain,
+			Path:     cookie.Path,
+			Secure:   cookie.Secure,
+			HTTPOnly: cookie.HTTPOnly,
+			SameSite: cookie.SameSite,
+			Expires:  cookie.Expires,
+			Priority: cookie.Priority,
+			// SameParty:    cookie.SameParty,
 			SourceScheme: cookie.SourceScheme,
 			SourcePort:   port,
 		})

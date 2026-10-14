@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/input"
-	"github.com/go-rod/rod/lib/proto"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/input"
+	"github.com/headlesslab/wand/lib/proto"
 	"go.uber.org/zap"
 )
 

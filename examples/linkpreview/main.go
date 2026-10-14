@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/launcher"
-	"github.com/go-rod/rod/lib/proto"
-	"github.com/go-rod/rod/lib/utils"
-	"github.com/ysmood/gson"
+	gson "github.com/headlesslab/lazyjson"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/launcher"
+	"github.com/headlesslab/wand/lib/proto"
+	"github.com/headlesslab/wand/lib/utils"
 )
 
 const (

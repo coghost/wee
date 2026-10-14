@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-rod/rod"
-	"github.com/go-rod/rod/lib/input"
+	rod "github.com/headlesslab/wand"
+	"github.com/headlesslab/wand/lib/input"
 )
 
 var ErrGetTextAfterInput = errors.New("cannot get text after input")

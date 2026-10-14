@@ -1,6 +1,6 @@
 package wee
 
-import "github.com/go-rod/rod"
+import rod "github.com/headlesslab/wand"
 
 type ScrollAsHuman struct {
 	enabled          bool
